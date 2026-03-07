@@ -31,7 +31,7 @@ export interface ParkForecastResponse {
   dayOfWeek: number
   forecasts: Record<string, {
     source: string
-    forecast: { hour: number; minute: number; projectedWait: number; sampleCount: number }[]
+    forecast: { hour: number; minute: number; projectedWait: number; low?: number; high?: number; sampleCount: number }[]
   }>
 }
 

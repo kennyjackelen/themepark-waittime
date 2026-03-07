@@ -72,6 +72,8 @@ export interface ProjectedWait {
   hour: number
   minute: number
   projectedWait: number
+  low?: number
+  high?: number
 }
 
 export type RideRecommendation =

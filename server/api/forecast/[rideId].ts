@@ -26,6 +26,8 @@ export default defineEventHandler((event) => {
       hour: f.hour,
       minute: 0,
       projectedWait: f.projectedWait,
+      low: f.low,
+      high: f.high,
       sampleCount: f.sampleCount,
       adjusted: f.adjusted,
     })),

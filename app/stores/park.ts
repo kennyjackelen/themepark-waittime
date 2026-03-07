@@ -154,6 +154,8 @@ export const useParkStore = defineStore('park', {
               hour: f.hour,
               minute: f.minute,
               projectedWait: f.projectedWait,
+              low: f.low,
+              high: f.high,
             }))
             forecastSource = 'historical'
           }

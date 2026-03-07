@@ -128,10 +128,11 @@ function recommendationColor(rec: string): string {
         </div>
         <div v-else class="space-y-3">
           <p class="text-sm text-gray-500 mb-2">Rides where now is the best time relative to later:</p>
-          <div
+          <NuxtLink
             v-for="(rec, idx) in store.topRecommendations"
             :key="rec.ride.id"
-            class="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
+            :to="`/park/${parkSlug}/ride/${rec.ride.id}`"
+            class="block bg-white rounded-xl shadow-sm border border-gray-100 p-4"
           >
             <div class="flex items-start gap-3">
               <div
@@ -153,7 +154,7 @@ function recommendationColor(rec: string): string {
             </div>
             <!-- Mini projection bar -->
             <RideProjectionBar v-if="rec.ride.projection.length > 0" :ride="rec.ride" class="mt-3" />
-          </div>
+          </NuxtLink>
         </div>
       </div>
 

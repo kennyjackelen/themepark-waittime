@@ -47,20 +47,24 @@ export const useParkStore = defineStore('park', {
         }))
     },
 
+    walkOnRides(): RideData[] {
+      return this.operatingRides.filter((r) => r.currentWait === null)
+    },
+
     goodTimeRides(): RideData[] {
-      return this.operatingRides.filter((r) => r.recommendation === 'good_time')
+      return this.operatingRides.filter((r) => r.currentWait !== null && r.recommendation === 'good_time')
     },
 
     badTimeRides(): RideData[] {
-      return this.operatingRides.filter((r) => r.recommendation === 'bad_time')
+      return this.operatingRides.filter((r) => r.currentWait !== null && r.recommendation === 'bad_time')
     },
 
     doesntMatterRides(): RideData[] {
-      return this.operatingRides.filter((r) => r.recommendation === 'doesnt_matter')
+      return this.operatingRides.filter((r) => r.currentWait !== null && r.recommendation === 'doesnt_matter')
     },
 
     unknownRides(): RideData[] {
-      return this.operatingRides.filter((r) => r.recommendation === 'unknown')
+      return this.operatingRides.filter((r) => r.currentWait !== null && r.recommendation === 'unknown')
     },
 
     closedRides(): RideData[] {

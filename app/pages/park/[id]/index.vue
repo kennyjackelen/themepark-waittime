@@ -199,6 +199,16 @@ function recommendationColor(rec: string): string {
           </div>
         </div>
 
+        <!-- Walk-on / no wait data section -->
+        <div v-if="store.walkOnRides.length > 0" class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+            No Posted Wait ({{ store.walkOnRides.length }})
+          </h2>
+          <div class="space-y-2">
+            <RideCard v-for="ride in store.walkOnRides" :key="ride.id" :ride="ride" :park-id="parkSlug" />
+          </div>
+        </div>
+
         <!-- Closed section -->
         <div v-if="store.closedRides.length > 0" class="mb-6">
           <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">

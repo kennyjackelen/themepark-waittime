@@ -59,6 +59,10 @@ export const useParkStore = defineStore('park', {
       return this.operatingRides.filter((r) => r.recommendation === 'doesnt_matter')
     },
 
+    unknownRides(): RideData[] {
+      return this.operatingRides.filter((r) => r.recommendation === 'unknown')
+    },
+
     closedRides(): RideData[] {
       return this.rideList.filter((r) => r.recommendation === 'closed')
     },

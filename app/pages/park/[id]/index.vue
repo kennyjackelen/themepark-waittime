@@ -189,6 +189,16 @@ function recommendationColor(rec: string): string {
           </div>
         </div>
 
+        <!-- Not enough data section -->
+        <div v-if="store.unknownRides.length > 0" class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Not Enough Data ({{ store.unknownRides.length }})
+          </h2>
+          <div class="space-y-2">
+            <RideCard v-for="ride in store.unknownRides" :key="ride.id" :ride="ride" :park-id="parkSlug" />
+          </div>
+        </div>
+
         <!-- Closed section -->
         <div v-if="store.closedRides.length > 0" class="mb-6">
           <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">

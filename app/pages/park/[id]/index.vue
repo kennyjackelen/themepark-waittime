@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useParkStore } from '../../stores/park'
-import { slugToParkId, parkIdToSlug } from '../../utils/slugs'
+import { useParkStore } from '../../../stores/park'
+import { slugToParkId, parkIdToSlug } from '../../../utils/slugs'
 
 const route = useRoute()
 const store = useParkStore()

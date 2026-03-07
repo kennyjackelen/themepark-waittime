@@ -38,3 +38,13 @@ export interface ParkForecastResponse {
 export async function fetchParkForecasts(parkId: string): Promise<ParkForecastResponse> {
   return await $fetch<ParkForecastResponse>(`/api/forecast/park/${parkId}`)
 }
+
+export interface ParkHistoryResponse {
+  parkId: string
+  date: string
+  history: Record<string, { time: string; waitMinutes: number }[]>
+}
+
+export async function fetchParkHistory(parkId: string): Promise<ParkHistoryResponse> {
+  return await $fetch<ParkHistoryResponse>(`/api/history/park/${parkId}`)
+}

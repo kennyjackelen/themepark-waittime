@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Destination, ParkEntry, LiveDataEntry, RideData, WaitTimeSnapshot, RideScore, ForecastSource } from '../utils/types'
-import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, fetchParkForecasts } from '../utils/api'
+import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, fetchParkForecasts, fetchParkHistory } from '../utils/api'
 import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides } from '../utils/projection'
 
 const ALLOWED_DESTINATION_IDS = new Set([
@@ -100,12 +100,13 @@ export const useParkStore = defineStore('park', {
       this.loading = true
       this.error = null
       try {
-        // Fetch children, live data, schedule, and backend forecasts in parallel
-        const [childrenData, liveDataResponse, scheduleData, backendForecasts] = await Promise.all([
+        // Fetch children, live data, schedule, backend forecasts, and server history in parallel
+        const [childrenData, liveDataResponse, scheduleData, backendForecasts, serverHistory] = await Promise.all([
           fetchEntityChildren(this.selectedPark.id),
           fetchLiveData(this.selectedPark.id),
           fetchSchedule(this.selectedPark.id),
           fetchParkForecasts(this.selectedPark.id).catch(() => null),
+          fetchParkHistory(this.selectedPark.id).catch(() => null),
         ])
 
         // Extract today's operating hours for synthetic forecasts
@@ -132,17 +133,36 @@ export const useParkStore = defineStore('park', {
           const currentWait = entry.queue?.STANDBY?.waitTime ?? null
           const status = entry.status || 'UNKNOWN'
 
-          const existing = this.rides.get(entry.id)
-          const history: WaitTimeSnapshot[] = existing?.history ? [...existing.history] : []
+          // Build history: start from server-collected data, then merge in-memory snapshots
+          const serverSnaps: WaitTimeSnapshot[] = (serverHistory?.history[entry.id] || []).map((s) => ({
+            time: new Date(s.time),
+            waitMinutes: s.waitMinutes,
+          }))
 
-          // Add current data point to history
+          const existing = this.rides.get(entry.id)
+          const inMemory: WaitTimeSnapshot[] = existing?.history ? [...existing.history] : []
+
+          // Add current data point
           if (currentWait !== null) {
-            history.push({ time: now, waitMinutes: currentWait })
+            inMemory.push({ time: now, waitMinutes: currentWait })
           }
 
-          // Keep only last 4 hours of history
-          const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000)
-          const trimmedHistory = history.filter((h) => h.time >= fourHoursAgo)
+          // Merge server + in-memory, dedup by rounding to nearest minute
+          const seen = new Set<number>()
+          const merged: WaitTimeSnapshot[] = []
+          for (const snap of [...serverSnaps, ...inMemory]) {
+            const key = Math.round(snap.time.getTime() / 60000)
+            if (!seen.has(key)) {
+              seen.add(key)
+              merged.push(snap)
+            }
+          }
+          merged.sort((a, b) => a.time.getTime() - b.time.getTime())
+
+          // Keep only today's history
+          const startOfDay = new Date(now)
+          startOfDay.setHours(0, 0, 0, 0)
+          const trimmedHistory = merged.filter((h) => h.time >= startOfDay)
 
           // Forecast priority: API forecast > backend historical > synthetic curve
           let projection = forecastToProjections((entry as any).forecast)

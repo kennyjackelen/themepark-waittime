@@ -142,9 +142,10 @@ export const useParkStore = defineStore('park', {
           const existing = this.rides.get(entry.id)
           const inMemory: WaitTimeSnapshot[] = existing?.history ? [...existing.history] : []
 
-          // Add current data point
+          // Add current data point using the API's lastUpdated timestamp when available
           if (currentWait !== null) {
-            inMemory.push({ time: now, waitMinutes: currentWait })
+            const observedAt = (entry as any).lastUpdated ? new Date((entry as any).lastUpdated) : now
+            inMemory.push({ time: observedAt, waitMinutes: currentWait })
           }
 
           // Merge server + in-memory, dedup by rounding to nearest minute

@@ -85,16 +85,17 @@ async function collectPark(parkId: string, now: Date): Promise<number> {
         if (status !== 'OPERATING' && status !== 'OPEN') continue
 
         const name = entry.name || childInfo?.name || 'Unknown'
+        const observedAt = entry.lastUpdated ? new Date(entry.lastUpdated) : now
         insert.run(
           parkId,
           entry.id,
           name,
           waitTime,
           status,
-          now.toISOString(),
-          now.getDay(),
-          now.getHours(),
-          now.getMinutes(),
+          observedAt.toISOString(),
+          observedAt.getDay(),
+          observedAt.getHours(),
+          observedAt.getMinutes(),
         )
         count++
       }

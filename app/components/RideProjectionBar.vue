@@ -30,7 +30,7 @@ const fullDaySlots = computed((): DisplaySlot[] => {
   }
 
   const slots: DisplaySlot[] = []
-  for (let h = openHour; h <= closeHour; h++) {
+  for (let h = openHour; h < closeHour; h++) {
     const data = projMap.get(h)
     slots.push({
       hour: h,

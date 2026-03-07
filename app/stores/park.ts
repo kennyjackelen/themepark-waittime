@@ -15,6 +15,8 @@ export const useParkStore = defineStore('park', {
     rides: new Map<string, RideData>(),
     loading: false,
     error: null as string | null,
+    parkOpenHour: 9,
+    parkCloseHour: 21,
     lastRefresh: null as Date | null,
     autoRefreshInterval: null as ReturnType<typeof setInterval> | null,
   }),
@@ -111,8 +113,10 @@ export const useParkStore = defineStore('park', {
         const todaySchedule = scheduleData.schedule.find(
           (s: any) => s.date === todayStr && s.type === 'OPERATING'
         )
-        const parkOpenHour = todaySchedule ? new Date(todaySchedule.openingTime).getHours() : 9
-        const parkCloseHour = todaySchedule ? new Date(todaySchedule.closingTime).getHours() : 21
+        this.parkOpenHour = todaySchedule ? new Date(todaySchedule.openingTime).getHours() : 9
+        this.parkCloseHour = todaySchedule ? new Date(todaySchedule.closingTime).getHours() : 21
+        const parkOpenHour = this.parkOpenHour
+        const parkCloseHour = this.parkCloseHour
 
         const childMap = new Map<string, { name: string; entityType: string }>()
         for (const child of childrenData.children) {

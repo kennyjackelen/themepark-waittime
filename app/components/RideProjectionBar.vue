@@ -1,41 +1,85 @@
 <script setup lang="ts">
 import type { RideData, WaitTimeSnapshot } from '../utils/types'
 import { getCurrentSlotIndex } from '../utils/projection'
+import { useParkStore } from '../stores/park'
+
+interface DisplaySlot {
+  hour: number
+  minute: number
+  projectedWait: number | null // null = no data for this hour
+}
 
 const props = defineProps<{
   ride: RideData
   tall?: boolean
 }>()
 
+const store = useParkStore()
 const BAR_HEIGHT = computed(() => props.tall ? 96 : 48)
-
 const now = new Date()
-const liveIndex = computed(() => getCurrentSlotIndex(props.ride.projection, now))
+
+// Build full-day slots from park open to close, filling gaps with null
+const fullDaySlots = computed((): DisplaySlot[] => {
+  const openHour = store.parkOpenHour
+  const closeHour = store.parkCloseHour
+  const projMap = new Map<number, number>()
+  for (const p of props.ride.projection) {
+    // Key on hour (projections are hourly)
+    projMap.set(p.hour, p.projectedWait)
+  }
+
+  const slots: DisplaySlot[] = []
+  for (let h = openHour; h <= closeHour; h++) {
+    const wait = projMap.get(h)
+    slots.push({
+      hour: h,
+      minute: 0,
+      projectedWait: wait !== undefined ? wait : null,
+    })
+  }
+  return slots
+})
+
+const liveIndex = computed(() => {
+  // Find which full-day slot is closest to now
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  let bestIdx = -1
+  let bestDist = Infinity
+  for (let i = 0; i < fullDaySlots.value.length; i++) {
+    const slotMinutes = fullDaySlots.value[i]!.hour * 60 + fullDaySlots.value[i]!.minute
+    const dist = Math.abs(slotMinutes - nowMinutes)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = i
+    }
+  }
+  return bestDist <= 60 ? bestIdx : -1
+})
 
 const maxWait = computed(() => {
-  const waits = props.ride.projection.map((p) => p.projectedWait)
+  const waits: number[] = []
+  for (const s of fullDaySlots.value) {
+    if (s.projectedWait !== null) waits.push(s.projectedWait)
+  }
   if (props.ride.currentWait !== null) waits.push(props.ride.currentWait)
-  // Include history actuals in max calculation
   for (const snap of props.ride.history) {
     if (snap.waitMinutes !== null) waits.push(snap.waitMinutes)
   }
   return Math.max(...waits, 10)
 })
 
-// Map each forecast slot to the closest actual wait from history (if any, and if it's a past slot)
+// Map each full-day slot to the closest actual wait from history
 const actualWaitBySlot = computed(() => {
-  const result: (number | null)[] = new Array(props.ride.projection.length).fill(null)
+  const result: (number | null)[] = new Array(fullDaySlots.value.length).fill(null)
   if (props.ride.history.length === 0) return result
 
-  for (let i = 0; i < props.ride.projection.length; i++) {
-    const p = props.ride.projection[i]!
-    const slotMinutes = p.hour * 60 + p.minute
+  for (let i = 0; i < fullDaySlots.value.length; i++) {
+    const s = fullDaySlots.value[i]!
+    const slotMinutes = s.hour * 60 + s.minute
     const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
-    // Only show actuals for past slots (not the live slot — that's handled separately)
     if (slotMinutes >= nowMinutes - 30) continue
 
-    // Find the closest history entry to this slot
     let bestSnap: WaitTimeSnapshot | null = null
     let bestDist = Infinity
     for (const snap of props.ride.history) {
@@ -46,7 +90,6 @@ const actualWaitBySlot = computed(() => {
         bestSnap = snap
       }
     }
-    // Only use if within 45 minutes of the slot
     if (bestSnap && bestDist <= 45) {
       result[i] = bestSnap.waitMinutes
     }
@@ -58,14 +101,8 @@ function barPx(wait: number): string {
   return `${Math.max((wait / maxWait.value) * BAR_HEIGHT.value, 2)}px`
 }
 
-function waitForBar(i: number): number {
-  const p = props.ride.projection[i]!
-  if (i === liveIndex.value && props.ride.currentWait !== null) return props.ride.currentWait
-  return p.projectedWait
-}
-
-// The display label: show actual if we have it for past slots, live for current, forecast otherwise
-function labelForBar(i: number): { value: number; isActual: boolean } {
+function labelForBar(i: number): { value: number | null; isActual: boolean } {
+  const s = fullDaySlots.value[i]!
   if (i === liveIndex.value && props.ride.currentWait !== null) {
     return { value: props.ride.currentWait, isActual: true }
   }
@@ -73,7 +110,7 @@ function labelForBar(i: number): { value: number; isActual: boolean } {
   if (actual !== null) {
     return { value: actual, isActual: true }
   }
-  return { value: props.ride.projection[i]!.projectedWait, isActual: false }
+  return { value: s.projectedWait, isActual: false }
 }
 
 function formatHour(h: number): string {
@@ -83,14 +120,14 @@ function formatHour(h: number): string {
 }
 
 function showLabel(idx: number): boolean {
-  const p = props.ride.projection[idx]
-  if (!p || p.minute !== 0) return false
+  const s = fullDaySlots.value[idx]
+  if (!s || s.minute !== 0) return false
   return props.tall ? true : idx % 3 === 0
 }
 
 function isPastSlot(i: number): boolean {
-  const p = props.ride.projection[i]!
-  const slotMinutes = p.hour * 60 + p.minute
+  const s = fullDaySlots.value[i]!
+  const slotMinutes = s.hour * 60 + s.minute
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   return slotMinutes < nowMinutes - 30
 }
@@ -121,26 +158,45 @@ function isPastSlot(i: number): boolean {
       <span class="flex items-center gap-1">
         <span class="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500" /> Actual
       </span>
+      <span class="flex items-center gap-1">
+        <span class="inline-block w-2.5 h-2.5 rounded-sm border-2 border-dashed border-gray-300" /> No data
+      </span>
     </div>
     <!-- Bars -->
     <div class="flex items-end gap-[3px]" :style="{ height: BAR_HEIGHT + 28 + 'px' }">
       <div
-        v-for="(p, i) in ride.projection"
+        v-for="(s, i) in fullDaySlots"
         :key="i"
         class="flex flex-col items-center justify-end flex-1 min-w-0"
       >
         <!-- Wait time label -->
         <span
+          v-if="labelForBar(i).value !== null"
           class="text-[8px] leading-none mb-0.5 font-medium tabular-nums"
           :class="labelForBar(i).isActual ? 'text-rose-600' : 'text-gray-400'"
         >{{ labelForBar(i).value }}</span>
+        <span v-else class="text-[8px] leading-none mb-0.5 text-transparent">0</span>
+
+        <!-- Missing data slot -->
+        <div v-if="s.projectedWait === null && i !== liveIndex" class="w-full">
+          <div
+            class="w-full rounded-sm border-2 border-dashed border-gray-300"
+            :style="{ height: '8px' }"
+          />
+        </div>
 
         <!-- Bar: layered for live slot (forecast behind, actual in front) -->
-        <div v-if="i === liveIndex" class="w-full relative">
-          <!-- Forecast ghost bar behind -->
+        <div v-else-if="i === liveIndex" class="w-full relative">
+          <!-- Forecast ghost bar behind (if we have projection data) -->
           <div
+            v-if="s.projectedWait !== null"
             class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(p.projectedWait) }"
+            :style="{ height: barPx(s.projectedWait) }"
+          />
+          <div
+            v-else
+            class="w-full rounded-sm border-2 border-dashed border-gray-300"
+            :style="{ height: '8px' }"
           />
           <!-- Actual live bar overlaid from bottom -->
           <div
@@ -154,7 +210,7 @@ function isPastSlot(i: number): boolean {
         <div v-else-if="isPastSlot(i) && actualWaitBySlot[i] !== null" class="w-full relative">
           <div
             class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(p.projectedWait) }"
+            :style="{ height: barPx(s.projectedWait!) }"
           />
           <div
             class="w-full rounded-sm bg-rose-400 absolute bottom-0 left-0"
@@ -166,7 +222,7 @@ function isPastSlot(i: number): boolean {
         <div v-else-if="isPastSlot(i)" class="w-full">
           <div
             class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(p.projectedWait) }"
+            :style="{ height: barPx(s.projectedWait!) }"
           />
         </div>
 
@@ -174,7 +230,7 @@ function isPastSlot(i: number): boolean {
         <div v-else class="w-full">
           <div
             class="w-full rounded-sm bg-teal-400"
-            :style="{ height: barPx(p.projectedWait) }"
+            :style="{ height: barPx(s.projectedWait!) }"
           />
         </div>
 
@@ -182,7 +238,7 @@ function isPastSlot(i: number): boolean {
         <span
           class="text-[9px] mt-0.5 leading-none"
           :class="showLabel(i) ? 'text-gray-400' : 'text-transparent'"
-        >{{ formatHour(p.hour) }}</span>
+        >{{ formatHour(s.hour) }}</span>
       </div>
     </div>
   </div>

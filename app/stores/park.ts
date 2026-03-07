@@ -180,6 +180,18 @@ export const useParkStore = defineStore('park', {
             forecastSource = 'historical'
           }
 
+          // Fill gaps in sparse backend forecasts with synthetic data
+          if (projection.length > 0 && projection.length < (parkCloseHour - parkOpenHour) / 2 && currentWait !== null && (status === 'OPERATING' || status === 'OPEN')) {
+            const synthetic = generateSyntheticForecast(currentWait, parkOpenHour, parkCloseHour, now)
+            const existingHours = new Set(projection.map((p) => p.hour))
+            for (const s of synthetic) {
+              if (!existingHours.has(s.hour)) {
+                projection.push(s)
+              }
+            }
+            projection.sort((a, b) => a.hour * 60 + (a.minute ?? 0) - (b.hour * 60 + (b.minute ?? 0)))
+          }
+
           if (projection.length === 0 && currentWait !== null && (status === 'OPERATING' || status === 'OPEN')) {
             projection = generateSyntheticForecast(currentWait, parkOpenHour, parkCloseHour, now)
             forecastSource = 'synthetic'

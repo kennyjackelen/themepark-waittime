@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { RideData, WaitTimeSnapshot } from '../utils/types'
-import { getCurrentSlotIndex } from '../utils/projection'
 import { useParkStore } from '../stores/park'
 
 interface DisplaySlot {
@@ -20,7 +19,6 @@ const store = useParkStore()
 const BAR_HEIGHT = computed(() => props.tall ? 96 : 48)
 const now = new Date()
 
-// Build full-day slots from park open to close, filling gaps with null
 const fullDaySlots = computed((): DisplaySlot[] => {
   const openHour = store.parkOpenHour
   const closeHour = store.parkCloseHour
@@ -108,28 +106,17 @@ function hasConfidence(i: number): boolean {
   return s.low !== null && s.high !== null && s.low !== s.high
 }
 
-function labelForBar(i: number): { value: number | null; isActual: boolean } {
-  const s = fullDaySlots.value[i]!
-  if (i === liveIndex.value && props.ride.currentWait !== null) {
-    return { value: props.ride.currentWait, isActual: true }
-  }
-  const actual = actualWaitBySlot.value[i]
-  if (actual !== null) {
-    return { value: actual, isActual: true }
-  }
-  return { value: s.projectedWait, isActual: false }
-}
-
 function formatHour(h: number): string {
   const period = h >= 12 ? 'p' : 'a'
   const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${displayHour}${period}`
 }
 
-function showLabel(idx: number): boolean {
-  const s = fullDaySlots.value[idx]
-  if (!s || s.minute !== 0) return false
-  return props.tall ? true : idx % 3 === 0
+function actualWaitLabel(i: number): number | null {
+  if (i === liveIndex.value && props.ride.currentWait !== null) {
+    return props.ride.currentWait
+  }
+  return actualWaitBySlot.value[i] ?? null
 }
 
 function isPastSlot(i: number): boolean {
@@ -138,6 +125,47 @@ function isPastSlot(i: number): boolean {
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   return slotMinutes < nowMinutes - 30
 }
+
+// Line chart points for actual wait data — one point per history snapshot
+const actualLinePoints = computed(() => {
+  const slots = fullDaySlots.value
+  if (slots.length === 0) return []
+
+  const openMinutes = slots[0]!.hour * 60 + slots[0]!.minute
+  const closeMinutes = slots[slots.length - 1]!.hour * 60 + slots[slots.length - 1]!.minute + 60
+  const range = closeMinutes - openMinutes
+
+  const points: { key: number; xPct: number; yPct: number; wait: number; isLive: boolean }[] = []
+
+  // Plot every history snapshot at its exact time
+  for (const snap of props.ride.history) {
+    if (snap.waitMinutes === null) continue
+    const snapMinutes = snap.time.getHours() * 60 + snap.time.getMinutes()
+    if (snapMinutes < openMinutes || snapMinutes > closeMinutes) continue
+    const xPct = ((snapMinutes - openMinutes) / range) * 100
+    const yPct = (snap.waitMinutes / maxWait.value) * 100
+    points.push({ key: snapMinutes, xPct, yPct, wait: snap.waitMinutes, isLive: false })
+  }
+
+  // Add live point
+  if (props.ride.currentWait !== null && liveIndex.value >= 0) {
+    const nowMin = now.getHours() * 60 + now.getMinutes()
+    if (nowMin >= openMinutes && nowMin <= closeMinutes) {
+      const xPct = ((nowMin - openMinutes) / range) * 100
+      const yPct = (props.ride.currentWait / maxWait.value) * 100
+      points.push({ key: nowMin, xPct, yPct, wait: props.ride.currentWait, isLive: true })
+    }
+  }
+
+  points.sort((a, b) => a.key - b.key)
+  return points
+})
+
+const actualLineSvgPoints = computed(() => {
+  return actualLinePoints.value
+    .map(p => `${p.xPct},${100 - p.yPct}`)
+    .join(' ')
+})
 </script>
 
 <template>
@@ -146,24 +174,24 @@ function isPastSlot(i: number): boolean {
       <p class="text-xs font-medium text-gray-500">Wait times</p>
       <span
         v-if="ride.currentWait !== null && (ride.status === 'OPERATING' || ride.status === 'OPEN')"
-        class="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1 leading-4"
+        class="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1 leading-4"
       >LIVE</span>
       <span
         v-if="ride.forecastSource === 'historical'"
-        class="text-[10px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1 leading-4"
+        class="text-[11px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1 leading-4"
       >TRAINED</span>
       <span
         v-if="ride.forecastSource === 'synthetic'"
-        class="text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 leading-4"
+        class="text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 leading-4"
       >ESTIMATED</span>
     </div>
     <!-- Legend (tall mode only) -->
-    <div v-if="tall" class="flex items-center gap-3 mb-2 text-[10px] text-gray-400">
+    <div v-if="tall" class="flex items-center gap-3 mb-2 text-[11px] text-gray-400">
       <span class="flex items-center gap-1">
         <span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-400" /> Forecast
       </span>
       <span class="flex items-center gap-1">
-        <span class="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500" /> Actual
+        <span class="inline-block w-2.5 h-0.5 rounded bg-rose-500" /> Actual
       </span>
       <span class="flex items-center gap-1">
         <span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-100 border border-teal-300" /> Range
@@ -172,99 +200,96 @@ function isPastSlot(i: number): boolean {
         <span class="inline-block w-2.5 h-2.5 rounded-sm border-2 border-dashed border-gray-300" /> No data
       </span>
     </div>
-    <!-- Bars -->
-    <div class="flex items-end gap-[3px]" :style="{ height: BAR_HEIGHT + 28 + 'px' }">
-      <div
-        v-for="(s, i) in fullDaySlots"
-        :key="i"
-        class="flex flex-col items-center justify-end flex-1 min-w-0"
+
+    <!-- Chart area -->
+    <div class="relative" :style="{ height: BAR_HEIGHT + 'px' }">
+      <!-- Forecast bars -->
+      <div class="flex items-end gap-[3px] h-full">
+        <div v-for="(s, i) in fullDaySlots" :key="i" class="flex-1 min-w-0">
+          <!-- Missing data -->
+          <div v-if="s.projectedWait === null" class="w-full">
+            <div class="w-full rounded-sm border-2 border-dashed border-gray-300" style="height: 8px" />
+          </div>
+          <!-- Bar with confidence interval -->
+          <div v-else-if="hasConfidence(i)" class="w-full relative">
+            <div class="w-full rounded-sm bg-teal-100" :style="{ height: barPx(s.high!) }" />
+            <div
+              class="w-full rounded-sm absolute bottom-0 left-0"
+              :class="isPastSlot(i) ? 'bg-teal-200' : i === liveIndex ? 'bg-teal-300' : 'bg-teal-400'"
+              :style="{ height: barPx(s.projectedWait) }"
+            />
+          </div>
+          <!-- Simple bar -->
+          <div v-else class="w-full">
+            <div
+              class="w-full rounded-sm"
+              :class="isPastSlot(i) ? 'bg-teal-200' : i === liveIndex ? 'bg-teal-300' : 'bg-teal-400'"
+              :style="{ height: barPx(s.projectedWait) }"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Actual wait line overlay -->
+      <svg
+        v-if="actualLinePoints.length >= 2"
+        class="absolute top-0 left-0 w-full h-full pointer-events-none"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
       >
-        <!-- Wait time label -->
+        <polyline
+          :points="actualLineSvgPoints"
+          fill="none"
+          stroke="#f43f5e"
+          stroke-width="2"
+          vector-effect="non-scaling-stroke"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+      </svg>
+
+      <!-- Data point dots -->
+      <template v-for="pt in actualLinePoints" :key="pt.key">
+        <!-- Pulse ring for live dot -->
+        <div
+          v-if="pt.isLive"
+          class="absolute rounded-full pointer-events-none bg-rose-400 animate-ping"
+          :style="{
+            width: '10px',
+            height: '10px',
+            left: `calc(${pt.xPct}% - 5px)`,
+            bottom: `calc(${pt.yPct}% - 5px)`,
+          }"
+        />
+        <div
+          class="absolute rounded-full pointer-events-none"
+          :class="pt.isLive
+            ? 'w-2.5 h-2.5 bg-rose-500 border-2 border-white shadow-sm'
+            : 'w-1.5 h-1.5 bg-rose-500'"
+          :style="{
+            left: pt.isLive ? `calc(${pt.xPct}% - 5px)` : `calc(${pt.xPct}% - 3px)`,
+            bottom: pt.isLive ? `calc(${pt.yPct}% - 5px)` : `calc(${pt.yPct}% - 3px)`,
+          }"
+        />
+      </template>
+    </div>
+
+    <!-- Labels -->
+    <div class="flex gap-[3px] mt-1">
+      <div v-for="(s, i) in fullDaySlots" :key="i" class="flex-1 min-w-0 flex flex-col items-center">
+        <span class="text-[11px] leading-none text-gray-400 pb-1">{{ formatHour(s.hour) }}</span>
+        <!-- Projected label -->
         <span
-          v-if="labelForBar(i).value !== null"
-          class="text-[8px] leading-none mb-0.5 font-medium tabular-nums"
-          :class="labelForBar(i).isActual ? 'text-rose-600' : 'text-gray-400'"
-        >{{ labelForBar(i).value }}</span>
-        <span v-else class="text-[8px] leading-none mb-0.5 text-transparent">0</span>
-
-        <!-- Live slot -->
-        <div v-if="i === liveIndex" class="w-full relative">
-          <div
-            v-if="s.projectedWait !== null && hasConfidence(i)"
-            class="w-full rounded-sm bg-teal-100"
-            :style="{ height: barPx(s.high!) }"
-          />
-          <div
-            v-if="s.projectedWait !== null"
-            class="w-full rounded-sm bg-teal-200 absolute bottom-0 left-0"
-            :style="{ height: barPx(s.projectedWait) }"
-          />
-          <div
-            v-if="s.projectedWait === null"
-            class="w-full rounded-sm border-2 border-dashed border-gray-300"
-            :style="{ height: '8px' }"
-          />
-          <div
-            v-if="ride.currentWait !== null"
-            class="w-full rounded-sm bg-rose-500 absolute bottom-0 left-0"
-            :style="{ height: barPx(ride.currentWait) }"
-          />
-        </div>
-
-        <!-- Past slot with actual data -->
-        <div v-else-if="isPastSlot(i) && actualWaitBySlot[i] !== null" class="w-full relative">
-          <div
-            v-if="s.projectedWait !== null"
-            class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(s.projectedWait) }"
-          />
-          <div
-            class="w-full rounded-sm bg-rose-400 absolute bottom-0 left-0"
-            :style="{ height: barPx(actualWaitBySlot[i]!) }"
-          />
-        </div>
-
-        <!-- Past slot without actual data -->
-        <div v-else-if="isPastSlot(i) && s.projectedWait !== null" class="w-full">
-          <div
-            class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(s.projectedWait) }"
-          />
-        </div>
-
-        <!-- Missing data slot (past with no data, or future with no projection) -->
-        <div v-else-if="s.projectedWait === null" class="w-full">
-          <div
-            class="w-full rounded-sm border-2 border-dashed border-gray-300"
-            :style="{ height: '8px' }"
-          />
-        </div>
-
-        <!-- Future slot with confidence interval -->
-        <div v-else-if="hasConfidence(i)" class="w-full relative">
-          <div
-            class="w-full rounded-sm bg-teal-100"
-            :style="{ height: barPx(s.high!) }"
-          />
-          <div
-            class="w-full rounded-sm bg-teal-400 absolute bottom-0 left-0"
-            :style="{ height: barPx(s.projectedWait!) }"
-          />
-        </div>
-
-        <!-- Future slot without confidence (API or synthetic forecasts) -->
-        <div v-else class="w-full">
-          <div
-            class="w-full rounded-sm bg-teal-400"
-            :style="{ height: barPx(s.projectedWait!) }"
-          />
-        </div>
-
-        <!-- Hour label -->
+          v-if="s.projectedWait !== null"
+          class="text-[10px] leading-none mt-0.5 font-medium tabular-nums text-teal-600"
+        >{{ s.projectedWait }}</span>
+        <span v-else class="text-[9px] leading-none mt-0.5 text-transparent">0</span>
+        <!-- Actual label -->
         <span
-          class="text-[9px] mt-0.5 leading-none"
-          :class="showLabel(i) ? 'text-gray-400' : 'text-transparent'"
-        >{{ formatHour(s.hour) }}</span>
+          v-if="actualWaitLabel(i) !== null"
+          class="text-[10px] leading-none mt-0.5 font-medium tabular-nums text-rose-500"
+        >{{ actualWaitLabel(i) }}</span>
+        <span v-else class="text-[9px] leading-none mt-0.5 text-transparent">0</span>
       </div>
     </div>
   </div>

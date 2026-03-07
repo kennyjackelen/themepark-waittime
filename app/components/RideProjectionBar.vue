@@ -187,16 +187,8 @@ function isPastSlot(i: number): boolean {
         >{{ labelForBar(i).value }}</span>
         <span v-else class="text-[8px] leading-none mb-0.5 text-transparent">0</span>
 
-        <!-- Missing data slot -->
-        <div v-if="s.projectedWait === null && i !== liveIndex" class="w-full">
-          <div
-            class="w-full rounded-sm border-2 border-dashed border-gray-300"
-            :style="{ height: '8px' }"
-          />
-        </div>
-
         <!-- Live slot -->
-        <div v-else-if="i === liveIndex" class="w-full relative">
+        <div v-if="i === liveIndex" class="w-full relative">
           <div
             v-if="s.projectedWait !== null && hasConfidence(i)"
             class="w-full rounded-sm bg-teal-100"
@@ -222,8 +214,9 @@ function isPastSlot(i: number): boolean {
         <!-- Past slot with actual data -->
         <div v-else-if="isPastSlot(i) && actualWaitBySlot[i] !== null" class="w-full relative">
           <div
+            v-if="s.projectedWait !== null"
             class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(s.projectedWait!) }"
+            :style="{ height: barPx(s.projectedWait) }"
           />
           <div
             class="w-full rounded-sm bg-rose-400 absolute bottom-0 left-0"
@@ -232,10 +225,18 @@ function isPastSlot(i: number): boolean {
         </div>
 
         <!-- Past slot without actual data -->
-        <div v-else-if="isPastSlot(i)" class="w-full">
+        <div v-else-if="isPastSlot(i) && s.projectedWait !== null" class="w-full">
           <div
             class="w-full rounded-sm bg-teal-200"
-            :style="{ height: barPx(s.projectedWait!) }"
+            :style="{ height: barPx(s.projectedWait) }"
+          />
+        </div>
+
+        <!-- Missing data slot (past with no data, or future with no projection) -->
+        <div v-else-if="s.projectedWait === null" class="w-full">
+          <div
+            class="w-full rounded-sm border-2 border-dashed border-gray-300"
+            :style="{ height: '8px' }"
           />
         </div>
 

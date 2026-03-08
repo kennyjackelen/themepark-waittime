@@ -5,12 +5,21 @@ import { parkIdToSlug } from '../utils/slugs'
 
 const store = useParkStore()
 const searchQuery = ref('')
+const showIntro = ref(false)
 
 onMounted(() => {
   if (store.destinations.length === 0) {
     store.loadDestinations()
   }
+  if (!localStorage.getItem('intro_seen')) {
+    showIntro.value = true
+  }
 })
+
+function dismissIntro() {
+  showIntro.value = false
+  localStorage.setItem('intro_seen', '1')
+}
 
 const filteredDestinations = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
@@ -34,11 +43,26 @@ function selectPark(park: ParkEntry) {
 
 <template>
   <div class="min-h-screen">
+    <IntroOverlay v-if="showIntro" @dismiss="dismissIntro" />
+
     <!-- Hero header -->
     <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-purple-900 text-white px-4 pt-10 pb-8">
       <div class="max-w-lg mx-auto">
-        <h1 class="text-3xl font-extrabold tracking-tight">Park Guide</h1>
-        <p class="text-indigo-300 text-sm mt-1">Real-time wait times & smart recommendations</p>
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 class="text-3xl font-extrabold tracking-tight">Park Guide</h1>
+            <p class="text-indigo-300 text-sm mt-1">Real-time wait times & smart recommendations</p>
+          </div>
+          <button
+            class="mt-1 p-2 -mr-2 rounded-full text-indigo-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="About this app"
+            @click="showIntro = true"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 

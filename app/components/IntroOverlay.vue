@@ -30,7 +30,7 @@ const sampleRides = [
 const sampleRecs = [
   { name: 'Haunted Mansion', badge: 'Go now', badgeClass: 'bg-emerald-100 text-emerald-700', wait: 5 },
   { name: 'Thunder Mountain', badge: 'Wait', badgeClass: 'bg-red-100 text-red-700', wait: 45 },
-  { name: 'Pirates', badge: 'Anytime', badgeClass: 'bg-blue-100 text-blue-700', wait: 20 },
+  { name: 'Pirates of the Caribbean', badge: 'Anytime', badgeClass: 'bg-blue-100 text-blue-700', wait: 20 },
 ]
 
 // Sample forecast data (projected waits per hour)

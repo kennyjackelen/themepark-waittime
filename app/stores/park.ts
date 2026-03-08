@@ -125,6 +125,11 @@ export const useParkStore = defineStore('park', {
           fetchParkHistory(this.selectedPark.id).catch(() => null),
         ])
 
+        // Update park name from API response (needed for direct navigation)
+        if (childrenData.name && this.selectedPark) {
+          this.selectedPark.name = childrenData.name
+        }
+
         // Extract today's operating hours for synthetic forecasts
         const todayStr = new Date().toISOString().slice(0, 10)
         const todaySchedule = scheduleData.schedule.find(

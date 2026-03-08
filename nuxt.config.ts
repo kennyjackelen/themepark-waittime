@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   serverDir: 'server',
   app: {
     head: {
-      title: 'Theme Park Wait Times',
+      title: "Kenny's Park Times",
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },

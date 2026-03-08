@@ -50,7 +50,7 @@ function selectPark(park: ParkEntry) {
       <div class="max-w-lg mx-auto">
         <div class="flex items-start justify-between">
           <div>
-            <h1 class="text-3xl font-extrabold tracking-tight">Park Guide</h1>
+            <h1 class="text-3xl font-extrabold tracking-tight">Kenny's Park Times</h1>
             <p class="text-indigo-300 text-sm mt-1">Real-time wait times & smart recommendations</p>
           </div>
           <button

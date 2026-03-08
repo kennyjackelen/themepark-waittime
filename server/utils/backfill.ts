@@ -1,4 +1,5 @@
 import { getDb } from './db'
+import { parkTimeComponents } from './timezone'
 
 const BASE_URL = 'https://api.themeparks.wiki/v1'
 
@@ -68,6 +69,7 @@ export async function backfillFromApi() {
             if (entry.status !== 'OPERATING' && entry.status !== 'OPEN') continue
 
             const time = new Date(entry.time)
+            const { dayOfWeek, hour, minute } = parkTimeComponents(time)
             insert.run(
               parkId,
               child.id,
@@ -75,9 +77,9 @@ export async function backfillFromApi() {
               entry.waitTime,
               entry.status,
               time.toISOString(),
-              time.getDay(),
-              time.getHours(),
-              time.getMinutes(),
+              dayOfWeek,
+              hour,
+              minute,
             )
             count++
           }

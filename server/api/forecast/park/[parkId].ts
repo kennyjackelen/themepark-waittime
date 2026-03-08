@@ -1,5 +1,6 @@
 import { getDb } from '../../../utils/db'
 import { buildForecast } from '../../../utils/forecast'
+import { parkTimeComponents } from '../../../utils/timezone'
 
 export default defineEventHandler((event) => {
   const parkId = getRouterParam(event, 'parkId')
@@ -8,7 +9,7 @@ export default defineEventHandler((event) => {
   }
 
   const query = getQuery(event)
-  const dayOfWeek = query.dow !== undefined ? Number(query.dow) : new Date().getDay()
+  const dayOfWeek = query.dow !== undefined ? Number(query.dow) : parkTimeComponents(new Date()).dayOfWeek
 
   const db = getDb()
 

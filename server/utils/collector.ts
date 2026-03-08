@@ -1,4 +1,5 @@
 import { getDb } from './db'
+import { parkTimeComponents } from './timezone'
 
 const BASE_URL = 'https://api.themeparks.wiki/v1'
 
@@ -86,6 +87,7 @@ async function collectPark(parkId: string, now: Date): Promise<number> {
 
         const name = entry.name || childInfo?.name || 'Unknown'
         const observedAt = entry.lastUpdated ? new Date(entry.lastUpdated) : now
+        const { dayOfWeek, hour, minute } = parkTimeComponents(observedAt)
         insert.run(
           parkId,
           entry.id,
@@ -93,9 +95,9 @@ async function collectPark(parkId: string, now: Date): Promise<number> {
           waitTime,
           status,
           observedAt.toISOString(),
-          observedAt.getDay(),
-          observedAt.getHours(),
-          observedAt.getMinutes(),
+          dayOfWeek,
+          hour,
+          minute,
         )
         count++
       }

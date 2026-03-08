@@ -1,4 +1,5 @@
 import { getDb } from '../../../utils/db'
+import { parkToday } from '../../../utils/timezone'
 
 export default defineEventHandler((event) => {
   const parkId = getRouterParam(event, 'parkId')
@@ -7,7 +8,7 @@ export default defineEventHandler((event) => {
   }
 
   const db = getDb()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = parkToday()
 
   const rows = db.prepare(`
     SELECT ride_id, wait_minutes, observed_at

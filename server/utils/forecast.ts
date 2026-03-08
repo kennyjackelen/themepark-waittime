@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3'
+import { parkToday } from './timezone'
 
 export interface HourlyForecast {
   hour: number
@@ -103,8 +104,7 @@ function getTodayActuals(
   db: Database.Database,
   rideId: string,
 ): TodayActual[] {
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  const today = parkToday()
 
   return db.prepare(`
     SELECT hour, AVG(wait_minutes) as avgWait
@@ -112,7 +112,7 @@ function getTodayActuals(
     WHERE ride_id = ? AND observed_at >= ?
     GROUP BY hour
     ORDER BY hour
-  `).all(rideId, todayStart.toISOString()) as TodayActual[]
+  `).all(rideId, `${today}T00:00:00`) as TodayActual[]
 }
 
 /**

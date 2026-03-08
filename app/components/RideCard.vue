@@ -12,16 +12,16 @@ const expanded = ref(false)
 
 function waitColor(wait: number | null): string {
   if (wait === null) return 'text-gray-400'
-  if (wait === 0) return 'text-green-600'
-  if (wait <= 15) return 'text-green-600'
-  if (wait <= 30) return 'text-yellow-600'
+  if (wait === 0) return 'text-emerald-600'
+  if (wait <= 15) return 'text-emerald-600'
+  if (wait <= 30) return 'text-amber-600'
   if (wait <= 60) return 'text-orange-500'
   return 'text-red-600'
 }
 
 function recommendationBadge(rec: string): { label: string; classes: string } {
   switch (rec) {
-    case 'good_time': return { label: 'Go now', classes: 'bg-green-100 text-green-700' }
+    case 'good_time': return { label: 'Go now', classes: 'bg-emerald-100 text-emerald-700' }
     case 'bad_time': return { label: 'Wait', classes: 'bg-red-100 text-red-700' }
     case 'doesnt_matter': return { label: 'Anytime', classes: 'bg-blue-100 text-blue-700' }
     case 'closed': return { label: 'Closed', classes: 'bg-gray-100 text-gray-500' }
@@ -33,30 +33,30 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
 </script>
 
 <template>
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white rounded-2xl shadow-sm shadow-black/5 overflow-hidden">
     <button
-      class="w-full px-4 py-3 flex items-center gap-3 text-left"
+      class="w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-gray-50/50 transition-colors"
       @click="expanded = !expanded"
     >
       <div class="flex-1 min-w-0">
         <h3 class="font-medium text-gray-800 truncate text-sm">{{ ride.name }}</h3>
         <div v-if="showRecommendation" class="mt-1">
-          <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="badge.classes">
+          <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold" :class="badge.classes">
             {{ badge.label }}
           </span>
         </div>
       </div>
       <div v-if="ride.status === 'OPERATING' || ride.status === 'OPEN'" class="text-right shrink-0">
-        <span class="text-xl font-bold" :class="waitColor(ride.currentWait)">
+        <span class="text-xl font-bold tabular-nums" :class="waitColor(ride.currentWait)">
           {{ ride.currentWait ?? '—' }}
         </span>
-        <span class="text-xs text-gray-400 ml-0.5">min</span>
+        <span class="text-[10px] text-gray-400 uppercase tracking-wider ml-0.5">min</span>
       </div>
-      <div v-else class="text-sm text-gray-400 shrink-0">
+      <div v-else class="text-xs font-medium text-gray-400 shrink-0 uppercase tracking-wider">
         {{ ride.status === 'CLOSED' ? 'Closed' : ride.status === 'DOWN' ? 'Down' : ride.status || 'Unknown' }}
       </div>
       <svg
-        class="w-4 h-4 text-gray-400 shrink-0 transition-transform"
+        class="w-4 h-4 text-gray-300 shrink-0 transition-transform"
         :class="{ 'rotate-180': expanded }"
         fill="none" stroke="currentColor" viewBox="0 0 24 24"
       >
@@ -64,23 +64,23 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
       </svg>
     </button>
 
-    <div v-if="expanded" class="px-4 pb-4 border-t border-gray-50">
+    <div v-if="expanded" class="px-4 pb-4 border-t border-gray-100/80">
       <RideProjectionBar v-if="ride.projection.length > 0" :ride="ride" class="mt-3" />
       <p v-else class="text-sm text-gray-400 mt-3">No projection data available</p>
 
       <!-- Recent history -->
       <div v-if="ride.history.length > 0" class="mt-3">
-        <p class="text-xs font-medium text-gray-500 mb-1">Recent wait times:</p>
-        <div class="flex gap-2 overflow-x-auto">
+        <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Recent</p>
+        <div class="flex gap-3 overflow-x-auto">
           <div
             v-for="(snap, i) in ride.history.slice(-8)"
             :key="i"
             class="text-center shrink-0"
           >
-            <div class="text-xs text-gray-400">
+            <div class="text-[11px] text-gray-400">
               {{ snap.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }}
             </div>
-            <div class="text-sm font-medium" :class="waitColor(snap.waitMinutes)">
+            <div class="text-sm font-semibold tabular-nums" :class="waitColor(snap.waitMinutes)">
               {{ snap.waitMinutes ?? '—' }}
             </div>
           </div>
@@ -90,9 +90,9 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
       <NuxtLink
         v-if="parkId"
         :to="`/park/${parkId}/ride/${nameToSlug(ride.name)}`"
-        class="mt-3 block text-center text-sm text-blue-500 hover:text-blue-700"
+        class="mt-3 block text-center text-sm font-medium text-indigo-500 hover:text-indigo-700 transition-colors"
       >
-        View full details
+        View details
       </NuxtLink>
     </div>
   </div>

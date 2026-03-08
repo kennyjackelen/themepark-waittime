@@ -19,7 +19,6 @@ const filteredDestinations = computed(() => {
     .map((d) => {
       const matchesDest = d.name.toLowerCase().includes(q)
       const matchingParks = d.parks.filter((p) => p.name.toLowerCase().includes(q))
-      // If the destination name matches, show all its parks; otherwise show only matching parks
       if (matchesDest) return d
       if (matchingParks.length > 0) return { ...d, parks: matchingParks }
       return null
@@ -34,46 +33,58 @@ function selectPark(park: ParkEntry) {
 </script>
 
 <template>
-  <div class="max-w-lg mx-auto px-4 py-6">
-    <h1 class="text-2xl font-bold text-center mb-1">Theme Park Guide</h1>
-    <p class="text-gray-500 text-center text-sm mb-6">Choose your park to get started</p>
-
-    <input
-      v-model="searchQuery"
-      type="search"
-      placeholder="Search parks..."
-      class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-    />
-
-    <div v-if="store.loading && store.destinations.length === 0" class="text-center py-12 text-gray-400">
-      Loading destinations...
+  <div class="min-h-screen">
+    <!-- Hero header -->
+    <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-purple-900 text-white px-4 pt-10 pb-8">
+      <div class="max-w-lg mx-auto">
+        <h1 class="text-3xl font-extrabold tracking-tight">Park Guide</h1>
+        <p class="text-indigo-300 text-sm mt-1">Real-time wait times & smart recommendations</p>
+      </div>
     </div>
 
-    <div v-else-if="store.error" class="text-center py-12 text-red-500">
-      {{ store.error }}
-    </div>
+    <!-- Content -->
+    <div class="max-w-lg mx-auto px-4 -mt-4">
+      <input
+        v-model="searchQuery"
+        type="search"
+        placeholder="Search parks..."
+        class="w-full px-4 py-3 rounded-xl border-0 bg-white text-base shadow-lg shadow-black/5 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-400"
+      />
 
-    <div v-else class="space-y-3">
-      <div
-        v-for="dest in filteredDestinations"
-        :key="dest.id"
-        class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
-      >
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-          <h2 class="font-semibold text-gray-800">{{ dest.name }}</h2>
-        </div>
-        <div class="divide-y divide-gray-50">
-          <button
-            v-for="park in dest.parks"
-            :key="park.id"
-            class="w-full px-4 py-3 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center justify-between"
-            @click="selectPark(park)"
-          >
-            <span class="text-gray-700">{{ park.name }}</span>
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+      <div v-if="store.loading && store.destinations.length === 0" class="text-center py-16 text-gray-400">
+        <div class="inline-block w-6 h-6 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin mb-3" />
+        <p>Loading destinations...</p>
+      </div>
+
+      <div v-else-if="store.error" class="text-center py-12">
+        <p class="text-red-500 mb-2">{{ store.error }}</p>
+        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700" @click="store.loadDestinations()">
+          Retry
+        </button>
+      </div>
+
+      <div v-else class="space-y-4 mt-6 pb-8">
+        <div
+          v-for="dest in filteredDestinations"
+          :key="dest.id"
+          class="bg-white rounded-2xl shadow-sm shadow-black/5 overflow-hidden"
+        >
+          <div class="px-4 py-3 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-500 text-xs tracking-wider uppercase">{{ dest.name }}</h2>
+          </div>
+          <div class="divide-y divide-gray-50">
+            <button
+              v-for="park in dest.parks"
+              :key="park.id"
+              class="w-full px-4 py-3.5 text-left hover:bg-indigo-50 active:bg-indigo-100 transition-colors flex items-center justify-between group"
+              @click="selectPark(park)"
+            >
+              <span class="text-gray-800 font-medium">{{ park.name }}</span>
+              <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

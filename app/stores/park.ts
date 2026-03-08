@@ -209,9 +209,14 @@ export const useParkStore = defineStore('park', {
             forecastSource = 'historical'
           }
 
+          // When time-shifted, derive a simulated wait from existing projections
+          const isShifted = (this.timeOffsetHours || 0) !== 0
+          const effectiveWait = currentWait ?? (isShifted ? interpolateProjectedWait(projection, now) : null)
+          const effectiveOpen = currentWait !== null ? (status === 'OPERATING' || status === 'OPEN') : isShifted
+
           // Fill any missing hours in backend forecasts with synthetic data
-          if (projection.length > 0 && currentWait !== null && (status === 'OPERATING' || status === 'OPEN')) {
-            const synthetic = generateSyntheticForecast(currentWait, parkOpenHour, parkCloseHour, now)
+          if (projection.length > 0 && effectiveWait !== null && effectiveOpen) {
+            const synthetic = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now)
             const existingHours = new Set(projection.map((p) => p.hour))
             for (const s of synthetic) {
               if (!existingHours.has(s.hour)) {
@@ -221,8 +226,8 @@ export const useParkStore = defineStore('park', {
             projection.sort((a, b) => a.hour * 60 + (a.minute ?? 0) - (b.hour * 60 + (b.minute ?? 0)))
           }
 
-          if (projection.length === 0 && currentWait !== null && (status === 'OPERATING' || status === 'OPEN')) {
-            projection = generateSyntheticForecast(currentWait, parkOpenHour, parkCloseHour, now)
+          if (projection.length === 0 && effectiveWait !== null && effectiveOpen) {
+            projection = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now)
             forecastSource = 'synthetic'
           }
 

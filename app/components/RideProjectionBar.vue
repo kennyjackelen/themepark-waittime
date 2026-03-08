@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const store = useParkStore()
 const BAR_HEIGHT = computed(() => props.tall ? 96 : 48)
-const now = new Date()
+const now = computed(() => store.now)
 
 const fullDaySlots = computed((): DisplaySlot[] => {
   const openHour = store.parkOpenHour
@@ -42,7 +42,7 @@ const fullDaySlots = computed((): DisplaySlot[] => {
 })
 
 const liveIndex = computed(() => {
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = now.value.getHours() * 60 + now.value.getMinutes()
   let bestIdx = -1
   let bestDist = Infinity
   for (let i = 0; i < fullDaySlots.value.length; i++) {
@@ -76,7 +76,7 @@ const actualWaitBySlot = computed(() => {
   for (let i = 0; i < fullDaySlots.value.length; i++) {
     const s = fullDaySlots.value[i]!
     const slotMinutes = s.hour * 60 + s.minute
-    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+    const nowMinutes = now.value.getHours() * 60 + now.value.getMinutes()
 
     if (slotMinutes >= nowMinutes - 30) continue
 
@@ -122,7 +122,7 @@ function actualWaitLabel(i: number): number | null {
 function isPastSlot(i: number): boolean {
   const s = fullDaySlots.value[i]!
   const slotMinutes = s.hour * 60 + s.minute
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = now.value.getHours() * 60 + now.value.getMinutes()
   return slotMinutes < nowMinutes - 30
 }
 
@@ -137,11 +137,13 @@ const actualLinePoints = computed(() => {
 
   const points: { key: number; xPct: number; yPct: number; wait: number; isLive: boolean }[] = []
 
-  // Plot every history snapshot at its exact time
+  // Plot every history snapshot at its exact time, but not beyond "now"
+  const nowMinutes = now.value.getHours() * 60 + now.value.getMinutes()
   for (const snap of props.ride.history) {
     if (snap.waitMinutes === null) continue
     const snapMinutes = snap.time.getHours() * 60 + snap.time.getMinutes()
     if (snapMinutes < openMinutes || snapMinutes > closeMinutes) continue
+    if (snapMinutes > nowMinutes) continue
     const xPct = ((snapMinutes - openMinutes) / range) * 100
     const yPct = (snap.waitMinutes / maxWait.value) * 100
     points.push({ key: snapMinutes, xPct, yPct, wait: snap.waitMinutes, isLive: false })
@@ -149,7 +151,7 @@ const actualLinePoints = computed(() => {
 
   // Add live point
   if (props.ride.currentWait !== null && liveIndex.value >= 0) {
-    const nowMin = now.getHours() * 60 + now.getMinutes()
+    const nowMin = now.value.getHours() * 60 + now.value.getMinutes()
     if (nowMin >= openMinutes && nowMin <= closeMinutes) {
       const xPct = ((nowMin - openMinutes) / range) * 100
       const yPct = (props.ride.currentWait / maxWait.value) * 100

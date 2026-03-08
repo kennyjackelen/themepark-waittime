@@ -2,6 +2,9 @@
   <div class="min-h-screen bg-gradient-to-b from-slate-100 to-slate-50 font-sans">
     <NuxtRouteAnnouncer />
     <NuxtPage />
+    <ClientOnly>
+      <TimeShiftControl />
+    </ClientOnly>
   </div>
 </template>
 

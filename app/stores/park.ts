@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Destination, ParkEntry, LiveDataEntry, RideData, WaitTimeSnapshot, RideScore, ForecastSource } from '../utils/types'
 import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, fetchParkForecasts, fetchParkHistory } from '../utils/api'
-import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides } from '../utils/projection'
+import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides, interpolateProjectedWait } from '../utils/projection'
 import { nameToSlug } from '../utils/slugs'
 
 const ALLOWED_DESTINATION_IDS = new Set([
@@ -20,9 +20,16 @@ export const useParkStore = defineStore('park', {
     parkCloseHour: 21,
     lastRefresh: null as Date | null,
     autoRefreshInterval: null as ReturnType<typeof setInterval> | null,
+    timeOffsetHours: 0,
   }),
 
   getters: {
+    now(): Date {
+      const offset = this.timeOffsetHours || 0
+      if (offset === 0) return new Date()
+      return new Date(Date.now() + offset * 60 * 60 * 1000)
+    },
+
     rideList(): RideData[] {
       return Array.from(this.rides.values())
         .filter((r) => r.entityType === 'ATTRACTION')
@@ -41,7 +48,7 @@ export const useParkStore = defineStore('park', {
         status: r.status,
         projections: r.projection,
       }))
-      return scoreRides(ridesWithProjections)
+      return scoreRides(ridesWithProjections, this.now)
         .slice(0, 5)
         .map((s) => ({
           ride: this.rides.get(s.id)!,
@@ -145,7 +152,7 @@ export const useParkStore = defineStore('park', {
           childMap.set(child.id, { name: child.name, entityType: child.entityType })
         }
 
-        const now = new Date()
+        const now = this.now
         for (const entry of liveDataResponse.liveData as LiveDataEntry[]) {
           const childInfo = childMap.get(entry.id)
           const entityType = childInfo?.entityType || entry.entityType || 'UNKNOWN'
@@ -219,7 +226,7 @@ export const useParkStore = defineStore('park', {
             forecastSource = 'synthetic'
           }
 
-          const recommendation = classifyRide(currentWait, status, projection)
+          const recommendation = classifyRide(currentWait, status, projection, now)
 
           this.rides.set(entry.id, {
             id: entry.id,
@@ -232,6 +239,11 @@ export const useParkStore = defineStore('park', {
             forecastSource,
             recommendation,
           })
+        }
+
+        // When time-shifted, simulate operating data from projections
+        if ((this.timeOffsetHours || 0) !== 0) {
+          this.reclassifyRides()
         }
 
         this.lastRefresh = now
@@ -262,6 +274,24 @@ export const useParkStore = defineStore('park', {
       this.selectedPark = null
       this.rides.clear()
       this.lastRefresh = null
+    },
+
+    /** Re-classify all rides using the current (possibly shifted) time.
+     *  When time-shifted, simulate operating status using projected waits. */
+    reclassifyRides() {
+      const now = this.now
+      const isShifted = (this.timeOffsetHours || 0) !== 0
+      for (const [id, ride] of this.rides) {
+        if (isShifted && ride.projection.length > 0) {
+          // Simulate operating status using forecast data
+          const simulatedWait = interpolateProjectedWait(ride.projection, now)
+          if (simulatedWait !== null) {
+            ride.currentWait = simulatedWait
+            ride.status = 'OPERATING'
+          }
+        }
+        ride.recommendation = classifyRide(ride.currentWait, ride.status, ride.projection, now)
+      }
     },
   },
 })

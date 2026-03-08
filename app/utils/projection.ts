@@ -137,11 +137,12 @@ export function getFutureProjections(
 export function classifyRide(
   currentWait: number | null,
   status: string,
-  projections: ProjectedWait[]
+  projections: ProjectedWait[],
+  now: Date = new Date()
 ): RideRecommendation {
   if (status !== 'OPERATING' && status !== 'OPEN') return 'closed'
 
-  const future = getFutureProjections(projections)
+  const future = getFutureProjections(projections, now)
   if (currentWait === null || future.length === 0) return 'unknown'
 
   const futureWaits = future.map((p) => p.projectedWait)
@@ -173,16 +174,49 @@ export function classifyRide(
 }
 
 /**
+ * Interpolate the projected wait at a given time from a set of projections.
+ * Returns null if no projections cover the requested time.
+ */
+export function interpolateProjectedWait(
+  projections: ProjectedWait[],
+  now: Date
+): number | null {
+  if (projections.length === 0) return null
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
+  // Find the two slots surrounding nowMinutes
+  let before: ProjectedWait | null = null
+  let after: ProjectedWait | null = null
+  for (const p of projections) {
+    const pMin = p.hour * 60 + (p.minute ?? 0)
+    if (pMin <= nowMinutes) before = p
+    if (pMin >= nowMinutes && !after) after = p
+  }
+
+  if (before && after) {
+    const bMin = before.hour * 60 + (before.minute ?? 0)
+    const aMin = after.hour * 60 + (after.minute ?? 0)
+    if (bMin === aMin) return before.projectedWait
+    const t = (nowMinutes - bMin) / (aMin - bMin)
+    return Math.round(before.projectedWait + t * (after.projectedWait - before.projectedWait))
+  }
+  if (before) return before.projectedWait
+  if (after) return after.projectedWait
+  return null
+}
+
+/**
  * Score rides for "best ride to go on now" recommendation.
  * Higher score = better time to ride now relative to later.
  */
 export function scoreRides(
-  rides: { id: string; name: string; currentWait: number | null; status: string; projections: ProjectedWait[] }[]
+  rides: { id: string; name: string; currentWait: number | null; status: string; projections: ProjectedWait[] }[],
+  now: Date = new Date()
 ): { id: string; score: number; reason: string }[] {
   return rides
     .filter((r) => (r.status === 'OPERATING' || r.status === 'OPEN') && r.currentWait !== null && r.currentWait >= 0)
     .map((r) => {
-      const future = getFutureProjections(r.projections)
+      const future = getFutureProjections(r.projections, now)
       const futureWaits = future.map((p) => p.projectedWait)
       if (futureWaits.length === 0) {
         return { id: r.id, score: 0, reason: 'No forecast data' }

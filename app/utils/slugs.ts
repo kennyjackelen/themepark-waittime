@@ -26,3 +26,11 @@ export function parkIdToSlug(id: string): string {
 export function slugToParkId(slug: string): string {
   return SLUG_TO_ID[slug] || slug
 }
+
+export function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}

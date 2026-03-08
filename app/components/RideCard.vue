@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RideData } from '../utils/types'
+import { nameToSlug } from '../utils/slugs'
 
 const props = defineProps<{
   ride: RideData
@@ -88,7 +89,7 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
 
       <NuxtLink
         v-if="parkId"
-        :to="`/park/${parkId}/ride/${ride.id}`"
+        :to="`/park/${parkId}/ride/${nameToSlug(ride.name)}`"
         class="mt-3 block text-center text-sm text-blue-500 hover:text-blue-700"
       >
         View full details

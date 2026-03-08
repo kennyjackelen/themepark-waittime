@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import type { Destination, ParkEntry, LiveDataEntry, RideData, WaitTimeSnapshot, RideScore, ForecastSource } from '../utils/types'
 import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, fetchParkForecasts, fetchParkHistory } from '../utils/api'
 import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides } from '../utils/projection'
+import { nameToSlug } from '../utils/slugs'
 
 const ALLOWED_DESTINATION_IDS = new Set([
   'e957da41-3552-4cf6-b636-5babc5cbc4e5', // Walt Disney World
@@ -71,6 +72,21 @@ export const useParkStore = defineStore('park', {
 
     closedRides(): RideData[] {
       return this.rideList.filter((r) => r.recommendation === 'closed')
+    },
+
+    rideBySlug(): (slug: string) => RideData | undefined {
+      const slugMap = new Map<string, RideData>()
+      for (const ride of this.rides.values()) {
+        slugMap.set(nameToSlug(ride.name), ride)
+      }
+      return (slug: string) => slugMap.get(slug)
+    },
+
+    rideSlug(): (id: string) => string {
+      return (id: string) => {
+        const ride = this.rides.get(id)
+        return ride ? nameToSlug(ride.name) : id
+      }
     },
   },
 

@@ -6,7 +6,16 @@ const route = useRoute()
 const store = useParkStore()
 
 const parkId = computed(() => slugToParkId(route.params.id as string))
-const ride = computed(() => store.rides.get(route.params.rideId as string))
+const ride = computed(() => {
+  const param = route.params.rideId as string
+  return store.rideBySlug(param) || store.rides.get(param)
+})
+
+onMounted(async () => {
+  if (!store.selectedPark || store.selectedPark.id !== parkId.value) {
+    await store.selectPark({ id: parkId.value, name: 'Loading...' })
+  }
+})
 
 function goBack() {
   navigateTo(`/park/${route.params.id}`)
@@ -81,7 +90,11 @@ const maxProjectedWait = computed(() => {
       <h1 class="text-lg font-bold truncate flex-1">{{ ride?.name || 'Ride' }}</h1>
     </div>
 
-    <div v-if="!ride" class="text-center py-12 text-gray-400">
+    <div v-if="store.loading" class="text-center py-12 text-gray-400">
+      Loading ride data...
+    </div>
+
+    <div v-else-if="!ride" class="text-center py-12 text-gray-400">
       Ride not found. Try going back and selecting a park first.
     </div>
 

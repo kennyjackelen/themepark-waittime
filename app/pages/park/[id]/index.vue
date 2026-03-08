@@ -25,6 +25,16 @@ function goHome() {
   navigateTo('/')
 }
 
+const refreshState = ref<'idle' | 'loading' | 'done'>('idle')
+
+async function handleRefresh() {
+  if (refreshState.value === 'loading') return
+  refreshState.value = 'loading'
+  await store.refreshLiveData()
+  refreshState.value = 'done'
+  setTimeout(() => { refreshState.value = 'idle' }, 1500)
+}
+
 function formatTime(date: Date | null): string {
   if (!date) return '—'
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -85,7 +95,21 @@ function recommendationColor(rec: string): string {
         <h1 class="text-lg font-bold truncate">{{ store.selectedPark?.name || 'Park' }}</h1>
         <p class="text-xs text-gray-400">
           Updated {{ formatTime(store.lastRefresh) }}
-          <button class="ml-2 text-blue-500 underline" @click="store.refreshLiveData()">Refresh</button>
+          <button
+            class="ml-2 inline-flex items-center gap-1"
+            :class="refreshState === 'idle' ? 'text-blue-500 underline' : 'text-gray-400 cursor-default'"
+            :disabled="refreshState !== 'idle'"
+            @click="handleRefresh()"
+          >
+            <svg v-if="refreshState === 'loading'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <svg v-else-if="refreshState === 'done'" class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ refreshState === 'loading' ? 'Refreshing…' : refreshState === 'done' ? 'Updated!' : 'Refresh' }}
+          </button>
         </p>
       </div>
     </div>
@@ -131,7 +155,7 @@ function recommendationColor(rec: string): string {
           <NuxtLink
             v-for="(rec, idx) in store.topRecommendations"
             :key="rec.ride.id"
-            :to="`/park/${parkSlug}/ride/${rec.ride.id}`"
+            :to="`/park/${parkSlug}/ride/${store.rideSlug(rec.ride.id)}`"
             class="block bg-white rounded-xl shadow-sm border border-gray-100 p-4"
           >
             <div class="flex items-start gap-3">

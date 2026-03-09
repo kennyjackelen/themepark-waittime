@@ -66,6 +66,7 @@ export interface RideData {
   projection: ProjectedWait[]
   forecastSource: ForecastSource
   recommendation: RideRecommendation
+  reason: string
 }
 
 export interface ProjectedWait {

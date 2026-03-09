@@ -93,7 +93,18 @@ function recommendationColor(rec: string): string {
           All Parks
         </button>
         <h1 class="text-2xl font-extrabold tracking-tight">{{ store.selectedPark?.name || 'Park' }}</h1>
-        <div class="flex items-center gap-2 mt-1.5 text-indigo-300 text-sm">
+        <div v-if="store.parkOpenTime" class="flex items-center gap-2 text-indigo-300/70 text-sm mt-1">
+          <span>Today {{ store.parkOpenTime }} – {{ store.parkCloseTime }}</span>
+          <span
+            v-if="store.selectedParkOpen === true"
+            class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 leading-none"
+          >Open</span>
+          <span
+            v-else-if="store.selectedParkOpen === false"
+            class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-indigo-300/70 leading-none"
+          >Closed</span>
+        </div>
+        <div class="flex items-center gap-2 mt-1 text-indigo-300 text-sm">
           <span>Updated {{ formatTime(store.lastRefresh) }}</span>
           <span class="text-indigo-600">·</span>
           <button

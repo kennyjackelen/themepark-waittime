@@ -40,9 +40,12 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
     >
       <div class="flex-1 min-w-0">
         <h3 class="font-medium text-gray-800 truncate text-sm">{{ ride.name }}</h3>
-        <div v-if="showRecommendation" class="mt-1">
-          <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold" :class="badge.classes">
+        <div v-if="showRecommendation || ride.reason" class="mt-1 flex items-center gap-2">
+          <span v-if="showRecommendation" class="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" :class="badge.classes">
             {{ badge.label }}
+          </span>
+          <span v-if="ride.reason" class="text-[11px] text-gray-400 truncate">
+            {{ ride.reason }}
           </span>
         </div>
       </div>

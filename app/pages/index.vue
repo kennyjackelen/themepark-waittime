@@ -103,8 +103,26 @@ function selectPark(park: ParkEntry) {
               class="w-full px-4 py-3.5 text-left hover:bg-indigo-50 active:bg-indigo-100 transition-colors flex items-center justify-between group"
               @click="selectPark(park)"
             >
-              <span class="text-gray-800 font-medium">{{ park.name }}</span>
-              <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="min-w-0">
+                <span class="text-gray-800 font-medium">{{ park.name }}</span>
+                <div v-if="store.parkSchedules[park.id]" class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-xs text-gray-400">{{ store.parkSchedules[park.id]!.open }} – {{ store.parkSchedules[park.id]!.close }}</span>
+                  <span
+                    v-if="store.isParkOpen(park.id) === true"
+                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 leading-none"
+                  >Open</span>
+                  <span
+                    v-else-if="store.isParkOpen(park.id) === false"
+                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
+                  >Closed</span>
+                </div>
+                <div v-else-if="store.parkSchedules[park.id] === null" class="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
+                  >Closed today</span>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
               </svg>
             </button>

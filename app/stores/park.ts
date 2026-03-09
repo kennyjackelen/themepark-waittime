@@ -18,6 +18,9 @@ export const useParkStore = defineStore('park', {
     error: null as string | null,
     parkOpenHour: 9,
     parkCloseHour: 21,
+    parkOpenTime: null as string | null,
+    parkCloseTime: null as string | null,
+    parkSchedules: {} as Record<string, { open: string; close: string; openHour: number; closeHour: number } | null>,
     lastRefresh: null as Date | null,
     autoRefreshInterval: null as ReturnType<typeof setInterval> | null,
     timeOffsetHours: 0,
@@ -50,11 +53,14 @@ export const useParkStore = defineStore('park', {
       }))
       return scoreRides(ridesWithProjections, this.now)
         .slice(0, 5)
-        .map((s) => ({
-          ride: this.rides.get(s.id)!,
-          score: s.score,
-          reason: s.reason,
-        }))
+        .map((s) => {
+          const ride = this.rides.get(s.id)!
+          return {
+            ride,
+            score: s.score,
+            reason: ride.reason || s.reason,
+          }
+        })
     },
 
     walkOnRides(): RideData[] {
@@ -95,6 +101,23 @@ export const useParkStore = defineStore('park', {
         return ride ? nameToSlug(ride.name) : id
       }
     },
+
+    isParkOpen(): (parkId: string) => boolean | null {
+      const nowHour = this.now.getHours()
+      return (parkId: string) => {
+        const sched = this.parkSchedules[parkId]
+        if (sched === undefined) return null // not loaded yet
+        if (sched === null) return false // closed today
+        return nowHour >= sched.openHour && nowHour < sched.closeHour
+      }
+    },
+
+    selectedParkOpen(): boolean | null {
+      if (!this.selectedPark) return null
+      if (this.parkOpenTime === null) return null
+      const nowHour = this.now.getHours()
+      return nowHour >= this.parkOpenHour && nowHour < this.parkCloseHour
+    },
   },
 
   actions: {
@@ -104,10 +127,38 @@ export const useParkStore = defineStore('park', {
       try {
         const all = await fetchDestinations()
         this.destinations = all.filter((d: Destination) => ALLOWED_DESTINATION_IDS.has(d.id))
+        // Fetch schedules for all parks in the background
+        this.loadAllParkSchedules()
       } catch (e: any) {
         this.error = e.message || 'Failed to load destinations'
       } finally {
         this.loading = false
+      }
+    },
+
+    async loadAllParkSchedules() {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const parkIds = this.destinations.flatMap((d) => d.parks.map((p) => p.id))
+      const results = await Promise.allSettled(
+        parkIds.map((id) => fetchSchedule(id).then((data) => ({ id, data })))
+      )
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const { id, data } = result.value
+          const todaySchedule = data.schedule.find(
+            (s: any) => s.date === todayStr && s.type === 'OPERATING'
+          )
+          if (todaySchedule) {
+            this.parkSchedules[id] = {
+              open: new Date(todaySchedule.openingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              close: new Date(todaySchedule.closingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              openHour: new Date(todaySchedule.openingTime).getHours(),
+              closeHour: new Date(todaySchedule.closingTime).getHours(),
+            }
+          } else {
+            this.parkSchedules[id] = null
+          }
+        }
       }
     },
 
@@ -144,6 +195,13 @@ export const useParkStore = defineStore('park', {
         )
         this.parkOpenHour = todaySchedule ? new Date(todaySchedule.openingTime).getHours() : 9
         this.parkCloseHour = todaySchedule ? new Date(todaySchedule.closingTime).getHours() : 21
+        if (todaySchedule) {
+          this.parkOpenTime = new Date(todaySchedule.openingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+          this.parkCloseTime = new Date(todaySchedule.closingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        } else {
+          this.parkOpenTime = null
+          this.parkCloseTime = null
+        }
         const parkOpenHour = this.parkOpenHour
         const parkCloseHour = this.parkCloseHour
 
@@ -231,7 +289,7 @@ export const useParkStore = defineStore('park', {
             forecastSource = 'synthetic'
           }
 
-          const recommendation = classifyRide(currentWait, status, projection, now)
+          const { recommendation, reason } = classifyRide(currentWait, status, projection, now)
 
           this.rides.set(entry.id, {
             id: entry.id,
@@ -243,6 +301,7 @@ export const useParkStore = defineStore('park', {
             projection,
             forecastSource,
             recommendation,
+            reason,
           })
         }
 
@@ -295,7 +354,9 @@ export const useParkStore = defineStore('park', {
             ride.status = 'OPERATING'
           }
         }
-        ride.recommendation = classifyRide(ride.currentWait, ride.status, ride.projection, now)
+        const result = classifyRide(ride.currentWait, ride.status, ride.projection, now)
+        ride.recommendation = result.recommendation
+        ride.reason = result.reason
       }
     },
   },

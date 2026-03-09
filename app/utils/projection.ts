@@ -139,38 +139,58 @@ export function classifyRide(
   status: string,
   projections: ProjectedWait[],
   now: Date = new Date()
-): RideRecommendation {
-  if (status !== 'OPERATING' && status !== 'OPEN') return 'closed'
+): { recommendation: RideRecommendation; reason: string } {
+  if (status !== 'OPERATING' && status !== 'OPEN') return { recommendation: 'closed', reason: '' }
 
   const future = getFutureProjections(projections, now)
-  if (currentWait === null || future.length === 0) return 'unknown'
+  if (currentWait === null || future.length === 0) return { recommendation: 'unknown', reason: '' }
 
   const futureWaits = future.map((p) => p.projectedWait)
   const minFuture = Math.min(...futureWaits)
   const maxFuture = Math.max(...futureWaits)
   const avgFuture = futureWaits.reduce((a, b) => a + b, 0) / futureWaits.length
 
+  if (currentWait === 0) {
+    return { recommendation: 'good_time', reason: 'Walk on right now!' }
+  }
+
   // If the ride never really has long waits (max forecast under 15 min), doesn't matter
-  if (maxFuture <= 15 && currentWait <= 15) return 'doesnt_matter'
+  if (maxFuture <= 15 && currentWait <= 15) {
+    return { recommendation: 'doesnt_matter', reason: 'Short wait all day' }
+  }
 
   // If the ride is always long and doesn't improve much, doesn't matter
-  if (minFuture > 0 && maxFuture / minFuture < 1.3 && currentWait >= 30) return 'doesnt_matter'
+  if (minFuture > 0 && maxFuture / minFuture < 1.3 && currentWait >= 30) {
+    return { recommendation: 'doesnt_matter', reason: 'Steady wait all day' }
+  }
+
+  const avg = Math.round(avgFuture)
 
   // Good time: current wait is notably below average forecast
-  if (currentWait < avgFuture * 0.7) return 'good_time'
+  if (currentWait < avgFuture * 0.7) {
+    return { recommendation: 'good_time', reason: `${currentWait} min now vs ~${avg} min avg later` }
+  }
 
   // Good time: current wait is within 10% of the day's forecast minimum
-  if (currentWait <= minFuture * 1.1) return 'good_time'
+  if (currentWait <= minFuture * 1.1) {
+    return { recommendation: 'good_time', reason: `Near the lowest wait today` }
+  }
 
   // Bad time: current wait is notably above average
-  if (currentWait > avgFuture * 1.3) return 'bad_time'
+  if (currentWait > avgFuture * 1.3) {
+    return { recommendation: 'bad_time', reason: `Usually ~${avg} min — wait for it to drop` }
+  }
 
   // Bad time: current wait is near the day's forecast maximum
-  if (currentWait >= maxFuture * 0.85) return 'bad_time'
+  if (currentWait >= maxFuture * 0.85) {
+    return { recommendation: 'bad_time', reason: `Near peak — drops to ~${Math.round(minFuture)} min later` }
+  }
 
   // Moderate — lean toward good if below average, bad if above
-  if (currentWait <= avgFuture) return 'good_time'
-  return 'bad_time'
+  if (currentWait <= avgFuture) {
+    return { recommendation: 'good_time', reason: `Shorter than usual (${currentWait} min)` }
+  }
+  return { recommendation: 'bad_time', reason: `Longer than usual (~${avg} min avg)` }
 }
 
 /**

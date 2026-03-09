@@ -131,8 +131,68 @@ export function getFutureProjections(
 }
 
 /**
+ * Format an hour number (0-23) as a short label like "4p" or "11a".
+ */
+function formatHourShort(h: number): string {
+  const period = h >= 12 ? 'p' : 'a'
+  const display = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${display}${period}`
+}
+
+/**
+ * For "bad time" recommendations, find when the wait drops meaningfully
+ * and describe the timeline to the user.
+ */
+function describeBetterTime(
+  currentWait: number,
+  future: ProjectedWait[],
+  now: Date,
+): string {
+  // Find the first slot where wait drops to at most 60% of current (and at least 10 min less)
+  const threshold = Math.min(currentWait * 0.6, currentWait - 10)
+  let betterSlot: ProjectedWait | null = null
+  for (const p of future) {
+    if (p.projectedWait <= threshold) {
+      betterSlot = p
+      break
+    }
+  }
+
+  // Find the overall minimum future slot
+  let minSlot = future[0]!
+  for (const p of future) {
+    if (p.projectedWait < minSlot.projectedWait) minSlot = p
+  }
+
+  const nowHour = now.getHours()
+
+  if (betterSlot) {
+    const hoursAway = betterSlot.hour - nowHour
+    if (hoursAway <= 1) {
+      return `Drops to ~${betterSlot.projectedWait} min around ${formatHourShort(betterSlot.hour)}`
+    }
+    return `~${betterSlot.projectedWait} min around ${formatHourShort(betterSlot.hour)} (${hoursAway}h away)`
+  }
+
+  // No big drop found — tell them about the minimum
+  if (minSlot.projectedWait < currentWait - 5) {
+    const hoursAway = minSlot.hour - nowHour
+    if (hoursAway <= 1) {
+      return `Best soon: ~${minSlot.projectedWait} min around ${formatHourShort(minSlot.hour)}`
+    }
+    return `Best: ~${minSlot.projectedWait} min around ${formatHourShort(minSlot.hour)} (${hoursAway}h away)`
+  }
+
+  // Wait stays high all day
+  return `Stays busy — lowest ~${minSlot.projectedWait} min around ${formatHourShort(minSlot.hour)}`
+}
+
+/**
  * Classify a ride as good_time / bad_time / doesnt_matter based on
  * how the current wait compares to the forecast for the rest of the day.
+ *
+ * Uses both ratio AND absolute thresholds to avoid flagging trivial
+ * differences (e.g. 30 min vs 25 min) as actionable.
  */
 export function classifyRide(
   currentWait: number | null,
@@ -149,48 +209,62 @@ export function classifyRide(
   const minFuture = Math.min(...futureWaits)
   const maxFuture = Math.max(...futureWaits)
   const avgFuture = futureWaits.reduce((a, b) => a + b, 0) / futureWaits.length
+  const avg = Math.round(avgFuture)
 
   if (currentWait === 0) {
+    if (avgFuture >= 15) {
+      return { recommendation: 'good_time', reason: `Walk on now — avg ~${avg} min later` }
+    }
     return { recommendation: 'good_time', reason: 'Walk on right now!' }
   }
 
-  // If the ride never really has long waits (max forecast under 15 min), doesn't matter
+  // Absolute and relative differences
+  const absDiffFromAvg = Math.abs(currentWait - avgFuture)
+  const spreadFuture = maxFuture - minFuture
+
+  // --- "Doesn't matter" checks ---
+
+  // Short wait all day
   if (maxFuture <= 15 && currentWait <= 15) {
     return { recommendation: 'doesnt_matter', reason: 'Short wait all day' }
   }
 
-  // If the ride is always long and doesn't improve much, doesn't matter
-  if (minFuture > 0 && maxFuture / minFuture < 1.3 && currentWait >= 30) {
-    return { recommendation: 'doesnt_matter', reason: 'Steady wait all day' }
+  // Narrow future range AND current wait is close to average
+  if (spreadFuture < 10 && absDiffFromAvg < 10) {
+    return { recommendation: 'doesnt_matter', reason: `Steady ~${avg} min all day` }
   }
 
-  const avg = Math.round(avgFuture)
+  // --- "Good time" checks: need BOTH meaningful ratio AND absolute gap ---
 
-  // Good time: current wait is notably below average forecast
-  if (currentWait < avgFuture * 0.7) {
+  // Well below average: >25% lower AND >8 min less
+  if (currentWait < avgFuture * 0.75 && currentWait < avgFuture - 8) {
     return { recommendation: 'good_time', reason: `${currentWait} min now vs ~${avg} min avg later` }
   }
 
-  // Good time: current wait is within 10% of the day's forecast minimum
-  if (currentWait <= minFuture * 1.1) {
-    return { recommendation: 'good_time', reason: `Near the lowest wait today` }
+  // Near day's minimum AND meaningful spread exists AND absolute gap from max
+  if (currentWait <= minFuture + 5 && spreadFuture >= 15 && maxFuture - currentWait >= 10) {
+    return { recommendation: 'good_time', reason: `Near today's lowest — goes up to ~${Math.round(maxFuture)} min` }
   }
 
-  // Bad time: current wait is notably above average
-  if (currentWait > avgFuture * 1.3) {
-    return { recommendation: 'bad_time', reason: `Usually ~${avg} min — wait for it to drop` }
+  // --- "Bad time" checks: need BOTH meaningful ratio AND absolute gap ---
+
+  // Well above average: >25% higher AND >8 min more
+  if (currentWait > avgFuture * 1.25 && currentWait > avgFuture + 8) {
+    const tip = describeBetterTime(currentWait, future, now)
+    return { recommendation: 'bad_time', reason: tip }
   }
 
-  // Bad time: current wait is near the day's forecast maximum
-  if (currentWait >= maxFuture * 0.85) {
-    return { recommendation: 'bad_time', reason: `Near peak — drops to ~${Math.round(minFuture)} min later` }
+  // Near day's maximum AND meaningful spread AND well above minimum
+  if (currentWait >= maxFuture * 0.85 && spreadFuture >= 15 && currentWait - minFuture >= 10) {
+    const tip = describeBetterTime(currentWait, future, now)
+    return { recommendation: 'bad_time', reason: tip }
   }
 
-  // Moderate — lean toward good if below average, bad if above
+  // --- Marginal cases: not actionable enough to advise go/wait ---
   if (currentWait <= avgFuture) {
-    return { recommendation: 'good_time', reason: `Shorter than usual (${currentWait} min)` }
+    return { recommendation: 'doesnt_matter', reason: `About average (~${avg} min typical)` }
   }
-  return { recommendation: 'bad_time', reason: `Longer than usual (~${avg} min avg)` }
+  return { recommendation: 'doesnt_matter', reason: `Slightly above average (~${avg} min typical)` }
 }
 
 /**

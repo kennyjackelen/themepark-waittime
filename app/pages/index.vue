@@ -21,18 +21,32 @@ function dismissIntro() {
   localStorage.setItem('intro_seen', '1')
 }
 
+function isClosedAllDay(parkId: string): boolean {
+  return store.parkSchedules[parkId] === null
+}
+
+function sortParks(parks: ParkEntry[]): ParkEntry[] {
+  return [...parks].sort((a, b) => {
+    const aClosed = isClosedAllDay(a.id) ? 1 : 0
+    const bClosed = isClosedAllDay(b.id) ? 1 : 0
+    return aClosed - bClosed
+  })
+}
+
 const filteredDestinations = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
-  if (!q) return store.destinations
-  return store.destinations
-    .map((d) => {
-      const matchesDest = d.name.toLowerCase().includes(q)
-      const matchingParks = d.parks.filter((p) => p.name.toLowerCase().includes(q))
-      if (matchesDest) return d
-      if (matchingParks.length > 0) return { ...d, parks: matchingParks }
-      return null
-    })
-    .filter(Boolean) as typeof store.destinations
+  const dests = q
+    ? store.destinations
+        .map((d) => {
+          const matchesDest = d.name.toLowerCase().includes(q)
+          const matchingParks = d.parks.filter((p) => p.name.toLowerCase().includes(q))
+          if (matchesDest) return d
+          if (matchingParks.length > 0) return { ...d, parks: matchingParks }
+          return null
+        })
+        .filter(Boolean) as typeof store.destinations
+    : store.destinations
+  return dests.map((d) => ({ ...d, parks: sortParks(d.parks) }))
 })
 
 function selectPark(park: ParkEntry) {
@@ -97,35 +111,47 @@ function selectPark(park: ParkEntry) {
             <h2 class="font-semibold text-gray-500 text-xs tracking-wider uppercase">{{ dest.name }}</h2>
           </div>
           <div class="divide-y divide-gray-50">
-            <button
+            <div
               v-for="park in dest.parks"
               :key="park.id"
-              class="w-full px-4 py-3.5 text-left hover:bg-indigo-50 active:bg-indigo-100 transition-colors flex items-center justify-between group"
-              @click="selectPark(park)"
             >
-              <div class="min-w-0">
-                <span class="text-gray-800 font-medium">{{ park.name }}</span>
-                <div v-if="store.parkSchedules[park.id]" class="flex items-center gap-1.5 mt-0.5">
-                  <span class="text-xs text-gray-400">{{ store.parkSchedules[park.id]!.open }} – {{ store.parkSchedules[park.id]!.close }}</span>
-                  <span
-                    v-if="store.isParkOpen(park.id) === true"
-                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 leading-none"
-                  >Open</span>
-                  <span
-                    v-else-if="store.isParkOpen(park.id) === false"
-                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
-                  >Closed</span>
+              <button
+                v-if="!isClosedAllDay(park.id)"
+                class="w-full px-4 py-3.5 text-left hover:bg-indigo-50 active:bg-indigo-100 transition-colors flex items-center justify-between group"
+                @click="selectPark(park)"
+              >
+                <div class="min-w-0">
+                  <span class="text-gray-800 font-medium">{{ park.name }}</span>
+                  <div v-if="store.parkSchedules[park.id]" class="flex items-center gap-1.5 mt-0.5">
+                    <span class="text-xs text-gray-400">{{ store.parkSchedules[park.id]!.open }} – {{ store.parkSchedules[park.id]!.close }}</span>
+                    <span
+                      v-if="store.isParkOpen(park.id) === true"
+                      class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 leading-none"
+                    >Open</span>
+                    <span
+                      v-else-if="store.isParkOpen(park.id) === false"
+                      class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
+                    >Closed</span>
+                  </div>
                 </div>
-                <div v-else-if="store.parkSchedules[park.id] === null" class="flex items-center gap-1.5 mt-0.5">
-                  <span
-                    class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
-                  >Closed today</span>
+                <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <div
+                v-else
+                class="w-full px-4 py-3.5 flex items-center justify-between opacity-40"
+              >
+                <div class="min-w-0">
+                  <span class="text-gray-500 font-medium">{{ park.name }}</span>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span
+                      class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 leading-none"
+                    >Closed today</span>
+                  </div>
                 </div>
               </div>
-              <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            </div>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 import { useParkStore } from '../../../stores/park'
 import { slugToParkId, parkIdToSlug } from '../../../utils/slugs'
 import { useDarkMode } from '../../../composables/useDarkMode'
+import { formatTimeInTz } from '../../../utils/parkTime'
 
 const route = useRoute()
 const store = useParkStore()
@@ -38,7 +39,7 @@ async function handleRefresh() {
 
 function formatTime(date: Date | null): string {
   if (!date) return '—'
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return formatTimeInTz(date, store.parkTimezone)
 }
 
 function waitColor(wait: number | null): string {

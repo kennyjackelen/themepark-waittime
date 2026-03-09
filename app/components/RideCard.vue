@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RideData } from '../utils/types'
 import { nameToSlug } from '../utils/slugs'
+import { useParkStore } from '../stores/park'
+import { formatTimeInTz } from '../utils/parkTime'
 
 const props = defineProps<{
   ride: RideData
@@ -8,6 +10,7 @@ const props = defineProps<{
   parkId?: string
 }>()
 
+const store = useParkStore()
 const expanded = ref(false)
 
 function waitColor(wait: number | null): string {
@@ -81,7 +84,7 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
             class="text-center shrink-0"
           >
             <div class="text-[11px] text-gray-400 dark:text-gray-500">
-              {{ snap.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }}
+              {{ formatTimeInTz(snap.time, store.parkTimezone) }}
             </div>
             <div class="text-sm font-semibold tabular-nums" :class="waitColor(snap.waitMinutes)">
               {{ snap.waitMinutes ?? '—' }}

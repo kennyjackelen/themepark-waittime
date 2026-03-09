@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import type { Destination, ParkEntry, LiveDataEntry, RideData, WaitTimeSnapshot, RideScore, ForecastSource } from '../utils/types'
 import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, fetchParkForecasts, fetchParkHistory } from '../utils/api'
 import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides, interpolateProjectedWait } from '../utils/projection'
+import { getHourInTz, getMinutesSinceMidnight, formatTimeInTz, getTodayInTz, getStartOfDayInTz } from '../utils/parkTime'
 import { nameToSlug } from '../utils/slugs'
 
 const ALLOWED_DESTINATION_IDS = new Set([
@@ -21,6 +22,7 @@ export const useParkStore = defineStore('park', {
     parkOpenTime: null as string | null,
     parkCloseTime: null as string | null,
     parkSchedules: {} as Record<string, { open: string; close: string; openHour: number; closeHour: number } | null>,
+    parkTimezone: 'America/New_York' as string,
     lastRefresh: null as Date | null,
     autoRefreshInterval: null as ReturnType<typeof setInterval> | null,
     timeOffsetHours: 0,
@@ -51,7 +53,7 @@ export const useParkStore = defineStore('park', {
         status: r.status,
         projections: r.projection,
       }))
-      return scoreRides(ridesWithProjections, this.now)
+      return scoreRides(ridesWithProjections, this.now, this.parkTimezone)
         .slice(0, 5)
         .map((s) => {
           const ride = this.rides.get(s.id)!
@@ -103,7 +105,7 @@ export const useParkStore = defineStore('park', {
     },
 
     isParkOpen(): (parkId: string) => boolean | null {
-      const nowHour = this.now.getHours()
+      const nowHour = getHourInTz(this.now, this.parkTimezone)
       return (parkId: string) => {
         const sched = this.parkSchedules[parkId]
         if (sched === undefined) return null // not loaded yet
@@ -115,7 +117,7 @@ export const useParkStore = defineStore('park', {
     selectedParkOpen(): boolean | null {
       if (!this.selectedPark) return null
       if (this.parkOpenTime === null) return null
-      const nowHour = this.now.getHours()
+      const nowHour = getHourInTz(this.now, this.parkTimezone)
       return nowHour >= this.parkOpenHour && nowHour < this.parkCloseHour
     },
   },
@@ -137,7 +139,8 @@ export const useParkStore = defineStore('park', {
     },
 
     async loadAllParkSchedules() {
-      const todayStr = new Date().toISOString().slice(0, 10)
+      const tz = this.parkTimezone
+      const todayStr = getTodayInTz(tz)
       const parkIds = this.destinations.flatMap((d) => d.parks.map((p) => p.id))
       const results = await Promise.allSettled(
         parkIds.map((id) => fetchSchedule(id).then((data) => ({ id, data })))
@@ -150,10 +153,10 @@ export const useParkStore = defineStore('park', {
           )
           if (todaySchedule) {
             this.parkSchedules[id] = {
-              open: new Date(todaySchedule.openingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-              close: new Date(todaySchedule.closingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-              openHour: new Date(todaySchedule.openingTime).getHours(),
-              closeHour: new Date(todaySchedule.closingTime).getHours(),
+              open: formatTimeInTz(new Date(todaySchedule.openingTime), tz),
+              close: formatTimeInTz(new Date(todaySchedule.closingTime), tz),
+              openHour: getHourInTz(new Date(todaySchedule.openingTime), tz),
+              closeHour: getHourInTz(new Date(todaySchedule.closingTime), tz),
             }
           } else {
             this.parkSchedules[id] = null
@@ -189,15 +192,16 @@ export const useParkStore = defineStore('park', {
         }
 
         // Extract today's operating hours for synthetic forecasts
-        const todayStr = new Date().toISOString().slice(0, 10)
+        const tz = this.parkTimezone
+        const todayStr = getTodayInTz(tz)
         const todaySchedule = scheduleData.schedule.find(
           (s: any) => s.date === todayStr && s.type === 'OPERATING'
         )
-        this.parkOpenHour = todaySchedule ? new Date(todaySchedule.openingTime).getHours() : 9
-        this.parkCloseHour = todaySchedule ? new Date(todaySchedule.closingTime).getHours() : 21
+        this.parkOpenHour = todaySchedule ? getHourInTz(new Date(todaySchedule.openingTime), tz) : 9
+        this.parkCloseHour = todaySchedule ? getHourInTz(new Date(todaySchedule.closingTime), tz) : 21
         if (todaySchedule) {
-          this.parkOpenTime = new Date(todaySchedule.openingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-          this.parkCloseTime = new Date(todaySchedule.closingTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+          this.parkOpenTime = formatTimeInTz(new Date(todaySchedule.openingTime), tz)
+          this.parkCloseTime = formatTimeInTz(new Date(todaySchedule.closingTime), tz)
         } else {
           this.parkOpenTime = null
           this.parkCloseTime = null
@@ -247,12 +251,11 @@ export const useParkStore = defineStore('park', {
           merged.sort((a, b) => a.time.getTime() - b.time.getTime())
 
           // Keep only today's history
-          const startOfDay = new Date(now)
-          startOfDay.setHours(0, 0, 0, 0)
+          const startOfDay = getStartOfDayInTz(now, tz)
           const trimmedHistory = merged.filter((h) => h.time >= startOfDay)
 
           // Forecast priority: API forecast > backend historical > synthetic curve
-          let projection = forecastToProjections((entry as any).forecast)
+          let projection = forecastToProjections((entry as any).forecast, tz)
           let forecastSource: ForecastSource = projection.length > 0 ? 'api' : 'none'
 
           if (projection.length === 0 && backendForecasts?.forecasts[entry.id]) {
@@ -269,12 +272,20 @@ export const useParkStore = defineStore('park', {
 
           // When time-shifted, derive a simulated wait from existing projections
           const isShifted = (this.timeOffsetHours || 0) !== 0
-          const effectiveWait = currentWait ?? (isShifted ? interpolateProjectedWait(projection, now) : null)
-          const effectiveOpen = currentWait !== null ? (status === 'OPERATING' || status === 'OPEN') : isShifted
+          const isOpen = status === 'OPERATING' || status === 'OPEN'
+
+          // For non-operating rides, use last known wait from today's history for synthetic
+          const lastKnownWait = !isOpen && trimmedHistory.length > 0
+            ? trimmedHistory[trimmedHistory.length - 1]!.waitMinutes
+            : null
+          const effectiveWait = currentWait
+            ?? (isShifted ? interpolateProjectedWait(projection, now, tz) : null)
+            ?? lastKnownWait
+          const effectiveOpen = (currentWait !== null && isOpen) || isShifted || lastKnownWait !== null
 
           // Fill any missing hours in backend forecasts with synthetic data
           if (projection.length > 0 && effectiveWait !== null && effectiveOpen) {
-            const synthetic = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now)
+            const synthetic = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now, tz)
             const existingHours = new Set(projection.map((p) => p.hour))
             for (const s of synthetic) {
               if (!existingHours.has(s.hour)) {
@@ -285,11 +296,11 @@ export const useParkStore = defineStore('park', {
           }
 
           if (projection.length === 0 && effectiveWait !== null && effectiveOpen) {
-            projection = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now)
+            projection = generateSyntheticForecast(effectiveWait, parkOpenHour, parkCloseHour, now, tz)
             forecastSource = 'synthetic'
           }
 
-          const { recommendation, reason } = classifyRide(currentWait, status, projection, now)
+          const { recommendation, reason } = classifyRide(currentWait, status, projection, now, tz)
 
           this.rides.set(entry.id, {
             id: entry.id,
@@ -344,17 +355,18 @@ export const useParkStore = defineStore('park', {
      *  When time-shifted, simulate operating status using projected waits. */
     reclassifyRides() {
       const now = this.now
+      const tz = this.parkTimezone
       const isShifted = (this.timeOffsetHours || 0) !== 0
       for (const [id, ride] of this.rides) {
         if (isShifted && ride.projection.length > 0) {
           // Simulate operating status using forecast data
-          const simulatedWait = interpolateProjectedWait(ride.projection, now)
+          const simulatedWait = interpolateProjectedWait(ride.projection, now, tz)
           if (simulatedWait !== null) {
             ride.currentWait = simulatedWait
             ride.status = 'OPERATING'
           }
         }
-        const result = classifyRide(ride.currentWait, ride.status, ride.projection, now)
+        const result = classifyRide(ride.currentWait, ride.status, ride.projection, now, tz)
         ride.recommendation = result.recommendation
         ride.reason = result.reason
       }

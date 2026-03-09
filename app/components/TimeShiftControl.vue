@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useParkStore } from '../stores/park'
+import { formatTimeInTz } from '../utils/parkTime'
 
 const store = useParkStore()
 const expanded = ref(false)
@@ -33,7 +34,7 @@ const offsetDisplay = computed(() => {
 })
 
 const shiftedTime = computed(() => {
-  return store.now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return formatTimeInTz(store.now, store.parkTimezone)
 })
 
 function adjust(delta: number) {

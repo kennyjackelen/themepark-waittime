@@ -1,4 +1,5 @@
 import type { ForecastEntry, ProjectedWait, RideRecommendation } from './types'
+import { getHourInTz, getMinuteInTz, getMinutesSinceMidnight } from './parkTime'
 
 /**
  * Convert API forecast entries into ProjectedWait format.
@@ -6,14 +7,15 @@ import type { ForecastEntry, ProjectedWait, RideRecommendation } from './types'
  */
 export function forecastToProjections(
   forecast: ForecastEntry[] | undefined,
+  tz?: string,
 ): ProjectedWait[] {
   if (!forecast || forecast.length === 0) return []
 
   return forecast.map((f) => {
     const time = new Date(f.time)
     return {
-      hour: time.getHours(),
-      minute: time.getMinutes(),
+      hour: getHourInTz(time, tz),
+      minute: getMinuteInTz(time, tz),
       projectedWait: f.waitTime,
     }
   })
@@ -64,8 +66,9 @@ export function generateSyntheticForecast(
   openHour: number,
   closeHour: number,
   now: Date = new Date(),
+  tz?: string,
 ): ProjectedWait[] {
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = getMinutesSinceMidnight(now, tz)
   const openMinutes = openHour * 60
   const closeMinutes = closeHour * 60
   const dayLength = closeMinutes - openMinutes
@@ -98,10 +101,11 @@ export function generateSyntheticForecast(
  */
 export function getCurrentSlotIndex(
   projections: ProjectedWait[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  tz?: string,
 ): number {
   if (projections.length === 0) return -1
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = getMinutesSinceMidnight(now, tz)
   let bestIdx = -1
   let bestDist = Infinity
   for (let i = 0; i < projections.length; i++) {
@@ -121,9 +125,10 @@ export function getCurrentSlotIndex(
  */
 export function getFutureProjections(
   projections: ProjectedWait[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  tz?: string,
 ): ProjectedWait[] {
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = getMinutesSinceMidnight(now, tz)
   return projections.filter((p) => {
     const slotMinutes = p.hour * 60 + p.minute
     return slotMinutes >= nowMinutes
@@ -147,6 +152,7 @@ function describeBetterTime(
   currentWait: number,
   future: ProjectedWait[],
   now: Date,
+  tz?: string,
 ): string {
   // Find the first slot where wait drops to at most 60% of current (and at least 10 min less)
   const threshold = Math.min(currentWait * 0.6, currentWait - 10)
@@ -164,7 +170,7 @@ function describeBetterTime(
     if (p.projectedWait < minSlot.projectedWait) minSlot = p
   }
 
-  const nowHour = now.getHours()
+  const nowHour = getHourInTz(now, tz)
 
   if (betterSlot) {
     const hoursAway = betterSlot.hour - nowHour
@@ -198,11 +204,12 @@ export function classifyRide(
   currentWait: number | null,
   status: string,
   projections: ProjectedWait[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  tz?: string,
 ): { recommendation: RideRecommendation; reason: string } {
   if (status !== 'OPERATING' && status !== 'OPEN') return { recommendation: 'closed', reason: '' }
 
-  const future = getFutureProjections(projections, now)
+  const future = getFutureProjections(projections, now, tz)
   if (currentWait === null || future.length === 0) return { recommendation: 'unknown', reason: '' }
 
   const futureWaits = future.map((p) => p.projectedWait)
@@ -250,13 +257,13 @@ export function classifyRide(
 
   // Well above average: >25% higher AND >8 min more
   if (currentWait > avgFuture * 1.25 && currentWait > avgFuture + 8) {
-    const tip = describeBetterTime(currentWait, future, now)
+    const tip = describeBetterTime(currentWait, future, now, tz)
     return { recommendation: 'bad_time', reason: tip }
   }
 
   // Near day's maximum AND meaningful spread AND well above minimum
   if (currentWait >= maxFuture * 0.85 && spreadFuture >= 15 && currentWait - minFuture >= 10) {
-    const tip = describeBetterTime(currentWait, future, now)
+    const tip = describeBetterTime(currentWait, future, now, tz)
     return { recommendation: 'bad_time', reason: tip }
   }
 
@@ -273,10 +280,11 @@ export function classifyRide(
  */
 export function interpolateProjectedWait(
   projections: ProjectedWait[],
-  now: Date
+  now: Date,
+  tz?: string,
 ): number | null {
   if (projections.length === 0) return null
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = getMinutesSinceMidnight(now, tz)
 
   // Find the two slots surrounding nowMinutes
   let before: ProjectedWait | null = null
@@ -305,12 +313,13 @@ export function interpolateProjectedWait(
  */
 export function scoreRides(
   rides: { id: string; name: string; currentWait: number | null; status: string; projections: ProjectedWait[] }[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  tz?: string,
 ): { id: string; score: number; reason: string }[] {
   return rides
     .filter((r) => (r.status === 'OPERATING' || r.status === 'OPEN') && r.currentWait !== null && r.currentWait >= 0)
     .map((r) => {
-      const future = getFutureProjections(r.projections, now)
+      const future = getFutureProjections(r.projections, now, tz)
       const futureWaits = future.map((p) => p.projectedWait)
       if (futureWaits.length === 0) {
         return { id: r.id, score: 0, reason: 'No forecast data' }

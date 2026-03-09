@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useParkStore } from '../../../../stores/park'
 import { slugToParkId } from '../../../../utils/slugs'
+import { formatTimeInTz } from '../../../../utils/parkTime'
 
 const route = useRoute()
 const store = useParkStore()
@@ -168,7 +169,7 @@ const maxProjectedWait = computed(() => {
               class="flex items-center gap-3 text-sm"
             >
               <span class="text-gray-400 dark:text-gray-500 w-16 shrink-0 text-xs tabular-nums">
-                {{ snap.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }}
+                {{ formatTimeInTz(snap.time, store.parkTimezone) }}
               </span>
               <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div

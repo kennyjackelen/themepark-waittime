@@ -104,7 +104,7 @@ function skip() {
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="skip" />
 
         <!-- Card -->
-        <div class="relative w-full max-w-sm mx-4 mb-8 sm:mb-0 bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div class="relative w-full max-w-sm mx-4 mb-8 sm:mb-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
           <!-- Visual area -->
           <div class="bg-gradient-to-br from-indigo-600 to-purple-700 px-6 pt-8 pb-6">
             <h2 class="text-xl font-bold text-white text-center mb-4">{{ steps[currentStep].title }}</h2>
@@ -231,7 +231,7 @@ function skip() {
 
           <!-- Content -->
           <div class="px-8 pt-5 pb-6">
-            <p class="text-gray-600 text-sm leading-relaxed text-center">
+            <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed text-center">
               {{ steps[currentStep].description }}
             </p>
 
@@ -241,7 +241,7 @@ function skip() {
                 v-for="(_, i) in steps"
                 :key="i"
                 class="h-1.5 rounded-full transition-all duration-300"
-                :class="i === currentStep ? 'w-6 bg-indigo-600' : 'w-1.5 bg-gray-200'"
+                :class="i === currentStep ? 'w-6 bg-indigo-600' : 'w-1.5 bg-gray-200 dark:bg-gray-600'"
               />
             </div>
 
@@ -249,7 +249,7 @@ function skip() {
             <div class="flex gap-3 mt-5">
               <button
                 v-if="currentStep < steps.length - 1"
-                class="flex-1 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                class="flex-1 py-2.5 text-sm font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 @click="skip"
               >
                 Skip

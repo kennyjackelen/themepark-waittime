@@ -31,7 +31,7 @@ function waitColor(wait: number | null): string {
 }
 
 function waitRingColor(wait: number | null): string {
-  if (wait === null) return 'border-gray-200'
+  if (wait === null) return 'border-gray-200 dark:border-gray-700'
   if (wait === 0) return 'border-emerald-400'
   if (wait <= 15) return 'border-emerald-400'
   if (wait <= 30) return 'border-amber-400'
@@ -45,35 +45,35 @@ function recommendationText(rec: string): { label: string; description: string; 
       return {
         label: 'Good Time to Go',
         description: 'The wait is shorter than what we project for later. Head over now!',
-        colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+        colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/40 dark:border-emerald-700',
         icon: 'check',
       }
     case 'bad_time':
       return {
         label: 'Bad Time to Go',
         description: 'The wait is expected to get shorter later. Consider coming back.',
-        colorClass: 'text-red-700 bg-red-50 border-red-200',
+        colorClass: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/40 dark:border-red-700',
         icon: 'clock',
       }
     case 'doesnt_matter':
       return {
         label: 'Anytime is Fine',
         description: 'The wait stays roughly the same all day. Go whenever convenient.',
-        colorClass: 'text-blue-700 bg-blue-50 border-blue-200',
+        colorClass: 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/40 dark:border-blue-700',
         icon: 'neutral',
       }
     case 'closed':
       return {
         label: 'Currently Closed',
         description: 'This ride is not operating right now.',
-        colorClass: 'text-gray-600 bg-gray-50 border-gray-200',
+        colorClass: 'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:border-gray-600',
         icon: 'x',
       }
     default:
       return {
         label: 'Unknown',
         description: 'Not enough data to make a recommendation.',
-        colorClass: 'text-gray-500 bg-gray-50 border-gray-200',
+        colorClass: 'text-gray-500 bg-gray-50 border-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:border-gray-600',
         icon: 'question',
       }
   }
@@ -110,24 +110,24 @@ const maxProjectedWait = computed(() => {
     <div class="max-w-lg mx-auto px-4">
       <!-- Loading -->
       <div v-if="store.loading && !ride" class="-mt-4 py-8">
-        <div class="bg-white rounded-2xl shadow-sm shadow-black/5 p-8 animate-pulse">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-8 animate-pulse">
           <div class="flex flex-col items-center gap-3">
-            <div class="w-20 h-20 rounded-full bg-gray-200" />
-            <div class="h-4 bg-gray-200 rounded w-24" />
+            <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
           </div>
         </div>
       </div>
 
       <!-- Not found -->
       <div v-else-if="!ride" class="-mt-4 py-8">
-        <div class="bg-white rounded-2xl shadow-sm shadow-black/5 p-8 text-center">
-          <p class="text-gray-400">Ride not found. Try going back and selecting a park first.</p>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-8 text-center">
+          <p class="text-gray-400 dark:text-gray-500">Ride not found. Try going back and selecting a park first.</p>
         </div>
       </div>
 
       <template v-else>
         <!-- Current wait hero -->
-        <div class="bg-white rounded-2xl shadow-sm shadow-black/5 p-6 -mt-4 mb-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-6 -mt-4 mb-4">
           <div class="flex items-center justify-center">
             <div
               class="w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center"
@@ -136,10 +136,10 @@ const maxProjectedWait = computed(() => {
               <span class="text-3xl font-bold tabular-nums" :class="waitColor(ride.currentWait)">
                 {{ ride.currentWait ?? '—' }}
               </span>
-              <span class="text-[10px] text-gray-400 uppercase tracking-wider -mt-0.5">min</span>
+              <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider -mt-0.5">min</span>
             </div>
           </div>
-          <p class="text-center text-xs text-gray-400 mt-3 uppercase tracking-wider">Current Wait</p>
+          <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-3 uppercase tracking-wider">Current Wait</p>
         </div>
 
         <!-- Recommendation -->
@@ -149,28 +149,28 @@ const maxProjectedWait = computed(() => {
           :class="recInfo.colorClass"
         >
           <h2 class="font-semibold text-base">{{ recInfo.label }}</h2>
-          <p class="text-sm mt-1 opacity-80">{{ recInfo.description }}</p>
+          <p class="text-sm mt-1 opacity-80 dark:opacity-70">{{ recInfo.description }}</p>
         </div>
 
         <!-- Forecast chart -->
-        <div v-if="ride.projection.length > 0" class="bg-white rounded-2xl shadow-sm shadow-black/5 p-4 mb-4">
-          <h2 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Projected Wait Times</h2>
+        <div v-if="ride.projection.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-4 mb-4">
+          <h2 class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Projected Wait Times</h2>
           <RideProjectionBar :ride="ride" tall />
         </div>
 
         <!-- History -->
-        <div v-if="ride.history.length > 0" class="bg-white rounded-2xl shadow-sm shadow-black/5 p-4 mb-8">
-          <h2 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Today's History</h2>
+        <div v-if="ride.history.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-4 mb-8">
+          <h2 class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Today's History</h2>
           <div class="space-y-1.5">
             <div
               v-for="(snap, i) in ride.history"
               :key="i"
               class="flex items-center gap-3 text-sm"
             >
-              <span class="text-gray-400 w-16 shrink-0 text-xs tabular-nums">
+              <span class="text-gray-400 dark:text-gray-500 w-16 shrink-0 text-xs tabular-nums">
                 {{ snap.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }}
               </span>
-              <div class="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+              <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
                 <div
                   class="h-full rounded-full transition-all"
                   :class="

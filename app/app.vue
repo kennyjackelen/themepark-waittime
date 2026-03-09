@@ -1,5 +1,9 @@
+<script setup lang="ts">
+useDarkMode()
+</script>
+
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-100 to-slate-50 font-sans">
+  <div class="min-h-screen bg-gradient-to-b from-slate-100 to-slate-50 dark:from-gray-950 dark:to-gray-950 font-sans dark:text-gray-100 transition-colors">
     <NuxtRouteAnnouncer />
     <NuxtPage />
     <ClientOnly>

@@ -173,22 +173,22 @@ const actualLineSvgPoints = computed(() => {
 <template>
   <div>
     <div class="flex items-center gap-1.5 mb-1">
-      <p class="text-xs font-medium text-gray-500">Wait times</p>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Wait times</p>
       <span
         v-if="ride.currentWait !== null && (ride.status === 'OPERATING' || ride.status === 'OPEN')"
-        class="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1 leading-4"
+        class="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded px-1 leading-4"
       >LIVE</span>
       <span
         v-if="ride.forecastSource === 'historical'"
-        class="text-[11px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1 leading-4"
+        class="text-[11px] font-medium text-violet-600 bg-violet-50 border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800 dark:text-violet-400 rounded px-1 leading-4"
       >TRAINED</span>
       <span
         v-if="ride.forecastSource === 'synthetic'"
-        class="text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 leading-4"
+        class="text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 rounded px-1 leading-4"
       >ESTIMATED</span>
     </div>
     <!-- Legend (tall mode only) -->
-    <div v-if="tall" class="flex items-center gap-3 mb-2 text-[11px] text-gray-400">
+    <div v-if="tall" class="flex items-center gap-3 mb-2 text-[11px] text-gray-400 dark:text-gray-500">
       <span class="flex items-center gap-1">
         <span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-400" /> Forecast
       </span>
@@ -196,10 +196,10 @@ const actualLineSvgPoints = computed(() => {
         <span class="inline-block w-2.5 h-0.5 rounded bg-rose-500" /> Actual
       </span>
       <span class="flex items-center gap-1">
-        <span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-100 border border-teal-300" /> Range
+        <span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-100 border border-teal-300 dark:bg-teal-900/30 dark:border-teal-600" /> Range
       </span>
       <span class="flex items-center gap-1">
-        <span class="inline-block w-2.5 h-2.5 rounded-sm border-2 border-dashed border-gray-300" /> No data
+        <span class="inline-block w-2.5 h-2.5 rounded-sm border-2 border-dashed border-gray-300 dark:border-gray-600" /> No data
       </span>
     </div>
 
@@ -210,11 +210,11 @@ const actualLineSvgPoints = computed(() => {
         <div v-for="(s, i) in fullDaySlots" :key="i" class="flex-1 min-w-0">
           <!-- Missing data -->
           <div v-if="s.projectedWait === null" class="w-full">
-            <div class="w-full rounded-sm border-2 border-dashed border-gray-300" style="height: 8px" />
+            <div class="w-full rounded-sm border-2 border-dashed border-gray-300 dark:border-gray-600" style="height: 8px" />
           </div>
           <!-- Bar with confidence interval -->
           <div v-else-if="hasConfidence(i)" class="w-full relative">
-            <div class="w-full rounded-sm bg-teal-100" :style="{ height: barPx(s.high!) }" />
+            <div class="w-full rounded-sm bg-teal-100 dark:bg-teal-900/30" :style="{ height: barPx(s.high!) }" />
             <div
               class="w-full rounded-sm absolute bottom-0 left-0"
               :class="isPastSlot(i) ? 'bg-teal-200' : i === liveIndex ? 'bg-teal-300' : 'bg-teal-400'"
@@ -266,7 +266,7 @@ const actualLineSvgPoints = computed(() => {
         <div
           class="absolute rounded-full pointer-events-none"
           :class="pt.isLive
-            ? 'w-2.5 h-2.5 bg-rose-500 border-2 border-white shadow-sm'
+            ? 'w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-gray-800 shadow-sm'
             : 'w-1.5 h-1.5 bg-rose-500'"
           :style="{
             left: pt.isLive ? `calc(${pt.xPct}% - 5px)` : `calc(${pt.xPct}% - 3px)`,
@@ -279,11 +279,11 @@ const actualLineSvgPoints = computed(() => {
     <!-- Labels -->
     <div class="flex gap-[3px] mt-1">
       <div v-for="(s, i) in fullDaySlots" :key="i" class="flex-1 min-w-0 flex flex-col items-center">
-        <span class="text-[11px] leading-none text-gray-400 pb-1">{{ formatHour(s.hour) }}</span>
+        <span class="text-[11px] leading-none text-gray-400 dark:text-gray-500 pb-1">{{ formatHour(s.hour) }}</span>
         <!-- Projected label -->
         <span
           v-if="s.projectedWait !== null"
-          class="text-[10px] leading-none mt-0.5 font-medium tabular-nums text-teal-600"
+          class="text-[10px] leading-none mt-0.5 font-medium tabular-nums text-teal-600 dark:text-teal-400"
         >{{ s.projectedWait }}</span>
         <span v-else class="text-[9px] leading-none mt-0.5 text-transparent">0</span>
         <!-- Actual label -->

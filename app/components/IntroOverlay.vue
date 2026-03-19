@@ -107,10 +107,10 @@ function skip() {
         <div class="relative w-full max-w-sm mx-4 mb-8 sm:mb-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
           <!-- Visual area -->
           <div class="bg-gradient-to-br from-indigo-600 to-purple-700 px-6 pt-8 pb-6">
-            <h2 class="text-xl font-bold text-white text-center mb-4">{{ steps[currentStep].title }}</h2>
+            <h2 class="text-xl font-bold text-white text-center mb-4">{{ steps[currentStep]!.title }}</h2>
 
             <!-- Step 1: Sample wait time list -->
-            <div v-if="steps[currentStep].visual === 'waits'" class="space-y-2">
+            <div v-if="steps[currentStep]!.visual === 'waits'" class="space-y-2">
               <div
                 v-for="ride in sampleRides"
                 :key="ride.name"
@@ -125,7 +125,7 @@ function skip() {
             </div>
 
             <!-- Step 2: Sample recommendation badges -->
-            <div v-else-if="steps[currentStep].visual === 'recommendations'" class="space-y-2">
+            <div v-else-if="steps[currentStep]!.visual === 'recommendations'" class="space-y-2">
               <div
                 v-for="rec in sampleRecs"
                 :key="rec.name"
@@ -232,7 +232,7 @@ function skip() {
           <!-- Content -->
           <div class="px-8 pt-5 pb-6">
             <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed text-center">
-              {{ steps[currentStep].description }}
+              {{ steps[currentStep]!.description }}
             </p>
 
             <!-- Progress dots -->

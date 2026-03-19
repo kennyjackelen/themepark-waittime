@@ -13,6 +13,18 @@ const props = defineProps<{
 const store = useParkStore()
 const expanded = ref(false)
 
+function ratingDots(rating: number): string {
+  return String(rating)
+}
+
+function ratingColor(rating: number): string {
+  return rating === 3
+    ? 'text-amber-500 dark:text-amber-400'
+    : rating === 2
+      ? 'text-gray-500 dark:text-gray-400'
+      : 'text-gray-300 dark:text-gray-600'
+}
+
 function waitColor(wait: number | null): string {
   if (wait === null) return 'text-gray-400'
   if (wait === 0) return 'text-emerald-600'
@@ -43,6 +55,14 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
     >
       <div class="flex-1 min-w-0">
         <h3 class="font-medium text-gray-800 dark:text-gray-100 truncate text-sm">{{ ride.name }}</h3>
+        <div v-if="ride.guestRatings.length > 0" class="mt-0.5 flex items-center gap-2 flex-wrap">
+          <span
+            v-for="gr in ride.guestRatings"
+            :key="gr.guest"
+            class="text-[10px] font-semibold tabular-nums"
+            :class="ratingColor(gr.rating)"
+          >{{ gr.guest }} {{ ratingDots(gr.rating) }}</span>
+        </div>
         <div v-if="showRecommendation || ride.reason" class="mt-1 flex items-center gap-2">
           <span v-if="showRecommendation" class="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" :class="badge.classes">
             {{ badge.label }}

@@ -214,6 +214,14 @@ function recommendationColor(rec: string): string {
                 </div>
                 <div class="flex-1 min-w-0">
                   <h3 class="font-semibold text-gray-800 dark:text-gray-100 truncate">{{ rec.ride.name }}</h3>
+                  <div v-if="rec.ride.guestRatings.length > 0" class="flex items-center gap-2 mt-0.5">
+                    <span
+                      v-for="gr in rec.ride.guestRatings"
+                      :key="gr.guest"
+                      class="text-[10px] font-semibold"
+                      :class="gr.rating === 3 ? 'text-amber-500 dark:text-amber-400' : gr.rating === 2 ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'"
+                    >{{ gr.guest }} {{ gr.rating }}</span>
+                  </div>
                   <p class="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{{ rec.reason }}</p>
                 </div>
                 <div class="text-right shrink-0 pl-2">

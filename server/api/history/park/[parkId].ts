@@ -24,7 +24,7 @@ export default defineEventHandler((event) => {
   const history: Record<string, { time: string; waitMinutes: number }[]> = {}
   for (const row of rows) {
     if (!history[row.ride_id]) history[row.ride_id] = []
-    history[row.ride_id].push({
+    history[row.ride_id]!.push({
       time: row.observed_at,
       waitMinutes: row.wait_minutes,
     })

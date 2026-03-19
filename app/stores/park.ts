@@ -4,6 +4,7 @@ import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, f
 import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides, interpolateProjectedWait } from '../utils/projection'
 import { getHourInTz, getMinutesSinceMidnight, formatTimeInTz, getTodayInTz, getStartOfDayInTz } from '../utils/parkTime'
 import { nameToSlug } from '../utils/slugs'
+import { getRideRatings } from '../utils/rideRatings'
 
 const ALLOWED_DESTINATION_IDS = new Set([
   'e957da41-3552-4cf6-b636-5babc5cbc4e5', // Walt Disney World
@@ -259,7 +260,7 @@ export const useParkStore = defineStore('park', {
           let forecastSource: ForecastSource = projection.length > 0 ? 'api' : 'none'
 
           if (projection.length === 0 && backendForecasts?.forecasts[entry.id]) {
-            const bf = backendForecasts.forecasts[entry.id]
+            const bf = backendForecasts.forecasts[entry.id]!
             projection = bf.forecast.map((f) => ({
               hour: f.hour,
               minute: f.minute,
@@ -302,9 +303,10 @@ export const useParkStore = defineStore('park', {
 
           const { recommendation, reason } = classifyRide(currentWait, status, projection, now, tz)
 
+          const rideName = entry.name || childInfo?.name || 'Unknown Ride'
           this.rides.set(entry.id, {
             id: entry.id,
-            name: entry.name || childInfo?.name || 'Unknown Ride',
+            name: rideName,
             entityType,
             currentWait,
             status,
@@ -313,6 +315,7 @@ export const useParkStore = defineStore('park', {
             forecastSource,
             recommendation,
             reason,
+            guestRatings: getRideRatings(rideName),
           })
         }
 

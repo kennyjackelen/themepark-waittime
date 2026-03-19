@@ -56,6 +56,11 @@ export interface WaitTimeSnapshot {
 
 export type ForecastSource = 'api' | 'historical' | 'synthetic' | 'none'
 
+export interface GuestRating {
+  guest: string
+  rating: 1 | 2 | 3
+}
+
 export interface RideData {
   id: string
   name: string
@@ -67,6 +72,7 @@ export interface RideData {
   forecastSource: ForecastSource
   recommendation: RideRecommendation
   reason: string
+  guestRatings: GuestRating[]
 }
 
 export interface ProjectedWait {

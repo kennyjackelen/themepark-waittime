@@ -4,7 +4,7 @@ import { fetchDestinations, fetchEntityChildren, fetchLiveData, fetchSchedule, f
 import { forecastToProjections, generateSyntheticForecast, classifyRide, scoreRides, interpolateProjectedWait } from '../utils/projection'
 import { getHourInTz, getMinutesSinceMidnight, formatTimeInTz, getTodayInTz, getStartOfDayInTz } from '../utils/parkTime'
 import { nameToSlug } from '../utils/slugs'
-import { getRideRatings } from '../utils/rideRatings'
+import { getRideRatings, getRideTags } from '../utils/rideRatings'
 
 const ALLOWED_DESTINATION_IDS = new Set([
   'e957da41-3552-4cf6-b636-5babc5cbc4e5', // Walt Disney World
@@ -316,6 +316,7 @@ export const useParkStore = defineStore('park', {
             recommendation,
             reason,
             guestRatings: getRideRatings(rideName),
+            tags: getRideTags(rideName),
           })
         }
 

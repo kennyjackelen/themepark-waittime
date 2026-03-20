@@ -63,8 +63,20 @@ const RATINGS: { pattern: string; ratings: GuestRating[] }[] = [
   { pattern: 'krakatau', ratings: [{ guest: 'Amy', rating: 3 }, { guest: 'Max', rating: 3 }] },
 ]
 
+const RIDE_TAGS: { pattern: string; tags: string[] }[] = [
+  { pattern: 'bilge-rat', tags: ['SOAKED'] },
+  { pattern: 'dudley do-right', tags: ['SOAKED'] },
+  { pattern: 'jurassic park river', tags: ['SOAKED'] },
+]
+
 export function getRideRatings(rideName: string): GuestRating[] {
   const lower = rideName.toLowerCase()
   const match = RATINGS.find((r) => lower.includes(r.pattern))
   return match?.ratings ?? []
+}
+
+export function getRideTags(rideName: string): string[] {
+  const lower = rideName.toLowerCase()
+  const match = RIDE_TAGS.find((r) => lower.includes(r.pattern))
+  return match?.tags ?? []
 }

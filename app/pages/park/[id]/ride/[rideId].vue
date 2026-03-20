@@ -155,14 +155,19 @@ const maxProjectedWait = computed(() => {
           <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-3 uppercase tracking-wider">Current Wait</p>
         </div>
 
-        <!-- Guest Ratings -->
-        <div v-if="ride.guestRatings.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-4 mb-4">
+        <!-- Guest Ratings & Tags -->
+        <div v-if="ride.guestRatings.length > 0 || ride.tags.length > 0" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm shadow-black/5 dark:shadow-black/20 p-4 mb-4">
           <h2 class="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Guest Priority</h2>
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-4 flex-wrap">
             <div v-for="gr in ride.guestRatings" :key="gr.guest" class="flex items-center gap-1.5">
               <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ gr.guest }}</span>
               <span class="text-sm tracking-wider" :class="ratingColor(gr.rating)">{{ ratingStars(gr.rating) }}</span>
             </div>
+            <span
+              v-for="tag in ride.tags"
+              :key="tag"
+              class="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+            >{{ tag }}</span>
           </div>
         </div>
 

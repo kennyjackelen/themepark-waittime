@@ -55,13 +55,18 @@ const badge = computed(() => recommendationBadge(props.ride.recommendation))
     >
       <div class="flex-1 min-w-0">
         <h3 class="font-medium text-gray-800 dark:text-gray-100 truncate text-sm">{{ ride.name }}</h3>
-        <div v-if="ride.guestRatings.length > 0" class="mt-0.5 flex items-center gap-2 flex-wrap">
+        <div v-if="ride.guestRatings.length > 0 || ride.tags.length > 0" class="mt-0.5 flex items-center gap-2 flex-wrap">
           <span
             v-for="gr in ride.guestRatings"
             :key="gr.guest"
             class="text-[10px] font-semibold tabular-nums"
             :class="ratingColor(gr.rating)"
           >{{ gr.guest }} {{ ratingDots(gr.rating) }}</span>
+          <span
+            v-for="tag in ride.tags"
+            :key="tag"
+            class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          >{{ tag }}</span>
         </div>
         <div v-if="showRecommendation || ride.reason" class="mt-1 flex items-center gap-2">
           <span v-if="showRecommendation" class="text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0" :class="badge.classes">

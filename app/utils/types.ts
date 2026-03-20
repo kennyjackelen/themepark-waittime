@@ -73,6 +73,7 @@ export interface RideData {
   recommendation: RideRecommendation
   reason: string
   guestRatings: GuestRating[]
+  tags: string[]
 }
 
 export interface ProjectedWait {
